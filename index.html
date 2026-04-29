@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MIH Project Tracker V3</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --mih-blue: #010066;
@@ -635,7 +636,18 @@
     </div>
   </div>
 
+  <div id="loading-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:1rem;">
+    <div style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top-color:#38bdf8;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+    <span style="color:#fff;font-family:Inter,sans-serif;font-weight:600;">Connecting to cloud...</span>
+  </div>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
   <script>
+    // --- Supabase Setup ---
+    const SUPABASE_URL = 'https://grvbyxkilrobyrbsqqqr.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydmJ5eGtpbHJvYnlyYnNxcXFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODYzNzIsImV4cCI6MjA5MzA2MjM3Mn0.LT_bydOKCEAgyfUnFq0Wz1lSzEIxNhHaI-JHkkGH4WA';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     let state = {
       v: 3.4,
       theme: 'dark',
@@ -700,21 +712,52 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
 
     let currentUser = { role: 'none', id: null }; // roles: none, admin, member
 
-    function init() {
-      let saved = localStorage.getItem('mih_v3');
-      if (saved) {
-        let parsed = JSON.parse(saved);
-        if (parsed.pin && parsed.pin.length <= 4) parsed.pin = hashStr(parsed.pin);
-        state = Object.assign(state, parsed);
+    async function init() {
+      // Show loading
+      const overlay = document.getElementById('loading-overlay');
+
+      try {
+        // Try to load from Supabase
+        const { data, error } = await sb.from('project_state').select('data').eq('id', 1).single();
+        if (!error && data && data.data && Object.keys(data.data).length > 0) {
+          let parsed = data.data;
+          if (parsed.pin && parsed.pin.length <= 4) parsed.pin = hashStr(parsed.pin);
+          state = Object.assign(state, parsed);
+        } else {
+          // Fallback: try localStorage migration
+          let saved = localStorage.getItem('mih_v3');
+          if (saved) {
+            let parsed = JSON.parse(saved);
+            if (parsed.pin && parsed.pin.length <= 4) parsed.pin = hashStr(parsed.pin);
+            state = Object.assign(state, parsed);
+            // Migrate to Supabase silently
+            await sb.from('project_state').upsert({ id: 1, data: state });
+            localStorage.removeItem('mih_v3');
+          }
+        }
+      } catch (e) {
+        // Supabase unreachable - fall back to localStorage
+        let saved = localStorage.getItem('mih_v3');
+        if (saved) {
+          let parsed = JSON.parse(saved);
+          if (parsed.pin && parsed.pin.length <= 4) parsed.pin = hashStr(parsed.pin);
+          state = Object.assign(state, parsed);
+        }
       }
 
+      overlay.style.display = 'none';
       document.documentElement.setAttribute('data-theme', state.theme);
       applyRole(); renderAll();
     }
 
-    function saveState() {
-      localStorage.setItem('mih_v3', JSON.stringify(state));
+    async function saveState() {
       renderAll();
+      try {
+        await sb.from('project_state').upsert({ id: 1, data: state, updated_at: new Date().toISOString() });
+      } catch (e) {
+        // Fallback to localStorage if Supabase is unavailable
+        localStorage.setItem('mih_v3', JSON.stringify(state));
+      }
     }
 
     function toggleTheme() {
@@ -1037,52 +1080,57 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
     window.updR = function (id, f, v) { let r = state.reports.find(x => x.id === id); if (r) r[f] = v; saveState(); }
     window.delT = function (id) { if (confirm("Del?")) { state.tasks = state.tasks.filter(x => x.id !== id); saveState(); closeModal(); } }
 
-    // --- File Upload/Download ---
-    function getBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-      });
+    // File Upload/Download via Supabase Storage
+    async function uploadToStorage(file, folder) {
+      const path = `${folder}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { data, error } = await sb.storage.from('uploads').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
+      return { url: urlData.publicUrl, name: file.name };
     }
 
     window.uploadTaskFile = async function (id, input) {
       if (!input.files || !input.files[0]) return;
       const file = input.files[0];
-      if (file.size > 2 * 1024 * 1024) { alert("File is too large. Max 2MB limit for LocalStorage."); input.value = ''; return; }
       let t = state.tasks.find(x => x.id === id);
-      if (t) {
-        try {
-          t.fileData = await getBase64(file);
-          t.fileName = file.name;
-          saveState();
-          alert("File attached!");
-        } catch (e) { alert("Error reading file."); }
-      }
+      if (!t) return;
+      const btn = input.nextElementSibling || input;
+      input.disabled = true;
+      try {
+        const result = await uploadToStorage(file, 'tasks');
+        t.fileUrl = result.url;
+        t.fileName = result.name;
+        t.fileData = null; // clear old base64
+        await saveState();
+        alert('File uploaded successfully!');
+      } catch (e) { alert('Upload failed: ' + e.message); }
+      finally { input.disabled = false; input.value = ''; }
     }
 
     window.uploadReportFile = async function (id, input) {
       if (!input.files || !input.files[0]) return;
       const file = input.files[0];
-      if (file.size > 2 * 1024 * 1024) { alert("File is too large. Max 2MB limit for LocalStorage."); input.value = ''; return; }
       let r = state.reports.find(x => x.id === id);
-      if (r) {
-        try {
-          r.fileData = await getBase64(file);
-          r.fileName = file.name;
-          saveState();
-          alert("File attached!");
-        } catch (e) { alert("Error reading file."); }
-      }
+      if (!r) return;
+      input.disabled = true;
+      try {
+        const result = await uploadToStorage(file, 'reports');
+        r.fileUrl = result.url;
+        r.fileName = result.name;
+        r.fileData = null;
+        await saveState();
+        alert('Report uploaded successfully!');
+      } catch (e) { alert('Upload failed: ' + e.message); }
+      finally { input.disabled = false; input.value = ''; }
     }
 
     window.downloadFile = function (type, id) {
       let item = type === 'task' ? state.tasks.find(x => x.id === id) : state.reports.find(x => x.id === id);
-      if (!item || !item.fileData) return alert("No file attached.");
+      if (!item) return alert('No file attached.');
+      const url = item.fileUrl || item.fileData;
+      if (!url) return alert('No file attached.');
       let a = document.createElement('a');
-      a.href = item.fileData;
-      a.download = item.fileName;
+      a.href = url; a.target = '_blank'; a.download = item.fileName || 'download';
       a.click();
     }
 
