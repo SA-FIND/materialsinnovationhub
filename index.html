@@ -122,6 +122,18 @@
   body[data-role="member"] .member-only { display: inline-block; }
   
   .history-table { opacity: 0.7; }
+  
+  /* Mobile Responsiveness */
+  @media (max-width: 768px) {
+    header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .controls-bar { flex-wrap: wrap; }
+    .dash-grid { grid-template-columns: 1fr !important; }
+    .flex-between { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .flex-between .flex-gap { width: 100%; justify-content: flex-start; }
+    .glass-panel { padding: 1rem; }
+    .tabs { padding-bottom: 0.5rem; }
+    th, td { font-size: 12px; padding: 0.75rem 0.25rem; }
+  }
 </style>
 </head>
 <body data-role="none">
@@ -137,6 +149,7 @@
     </div>
     <div class="controls-bar">
       <div id="realtime-clock" style="font-size: 12px; font-weight: 600; color: var(--mih-accent); background: var(--panel-bg); padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--panel-border);"></div>
+      <div class="badge warning" style="font-size: 11px;">⏰ Deadline: Friday 11:59 PM</div>
       <button class="btn" onclick="toggleTheme()">🌓 Theme</button>
       <span id="user-status" style="font-weight: 600; margin-left: 1rem;">View Only</span>
       <button class="btn btn-primary" id="login-btn" onclick="openLogin()">Login</button>
@@ -171,7 +184,7 @@
       </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+    <div class="dash-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
       <div class="glass-panel">
         <div class="flex-between">
           <h3>Project Overview</h3>
@@ -253,6 +266,13 @@
       </div>
       <p class="text-muted" style="margin-bottom: 1rem; font-size: 12px;">Locked phases prevent members from editing task submissions within that phase.</p>
       <table id="phases-table"></table>
+    </div>
+    <div class="glass-panel">
+      <div class="flex-between">
+        <h3>Deadline Notifications</h3>
+        <button class="btn btn-primary" onclick="sendDeadlineEmail()">Send Reminder Email</button>
+      </div>
+      <p class="text-muted" style="font-size: 12px;">Sends an email (BCC to all members) reminding them of the Friday 11:59 PM deadline. (Should be clicked 8:00 AM Fridays).</p>
     </div>
     <div class="glass-panel">
       <div class="flex-between">
@@ -388,11 +408,10 @@ function openModal(title, html, onSave) {
 function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
 function openLogin() {
-  let mOpts = state.members.map(m => `<option value="${m.id}">${m.name} ${m.tag?'('+m.tag+')':''}</option>`).join('');
   let html = `
     <div class="tabs"><button class="tab-btn active" id="btn-log-m" onclick="togLog('m')">Member</button><button class="tab-btn" id="btn-log-a" onclick="togLog('a')">President</button></div>
     <div id="log-m-box">
-      <div class="form-group"><label>Name</label><select id="log-mid">${mOpts}</select></div>
+      <div class="form-group"><label>Email Address</label><input type="email" id="log-memail" placeholder="member@example.com"></div>
       <div class="form-group"><label>Password (Default: 000)</label><input type="password" id="log-mpwd"></div>
     </div>
     <div id="log-a-box" style="display:none">
@@ -410,11 +429,11 @@ function openLogin() {
       if (document.getElementById('log-apin').value === state.pin) { currentUser = { role: 'admin', id: null }; }
       else { alert('Wrong PIN'); return false; }
     } else {
-      let mid = document.getElementById('log-mid').value;
+      let email = document.getElementById('log-memail').value.trim().toLowerCase();
       let pwd = document.getElementById('log-mpwd').value;
-      let m = state.members.find(x => x.id === mid);
-      if (m && m.pwd === pwd) { currentUser = { role: 'member', id: mid }; }
-      else { alert('Wrong Password'); return false; }
+      let m = state.members.find(x => x.email && x.email.toLowerCase() === email);
+      if (m && m.pwd === pwd) { currentUser = { role: 'member', id: m.id }; }
+      else { alert('Wrong Email or Password'); return false; }
     }
     applyRole();
   });
@@ -728,16 +747,19 @@ window.downloadFile = function(type, id) {
 }
 
 window.openMemberModal = function(mid) {
-  let m = state.members.find(x=>x.id===mid) || {name:'', tag:''};
+  let m = state.members.find(x=>x.id===mid) || {name:'', email:'', tag:''};
   openModal(mid?'Edit Member':'Add Member', `
     <div class="form-group"><label>Name</label><input type="text" id="am-name" value="${m.name}"></div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="am-email" value="${m.email||''}" placeholder="For login & notifications"></div>
     <div class="form-group"><label>Nickname / Tag</label><input type="text" id="am-tag" value="${m.tag||''}" placeholder="e.g. @Leader"></div>
   `, () => {
-    let n = document.getElementById('am-name').value;
-    let t = document.getElementById('am-tag').value;
+    let n = document.getElementById('am-name').value.trim();
+    let e = document.getElementById('am-email').value.trim();
+    let t = document.getElementById('am-tag').value.trim();
     if(!n) return alert("Name required");
-    if(mid) { m.name=n; m.tag=t; }
-    else { state.members.push({id:'m'+Date.now(), name:n, tag:t, pwd:'000'}); }
+    if(!e) return alert("Email required for login");
+    if(mid) { m.name=n; m.email=e; m.tag=t; }
+    else { state.members.push({id:'m'+Date.now(), name:n, email:e, tag:t, pwd:'000'}); }
     saveState();
   });
 }
@@ -746,6 +768,16 @@ window.delM = function(id) { if(confirm("Del?")){state.members=state.members.fil
 window.addPhase = function() { let n=prompt("Name:"); if(n){state.phases.push({id:'ph'+Date.now(),name:n,locked:false});saveState();} }
 window.togP = function(id) { let p=state.phases.find(x=>x.id===id); if(p){p.locked=!p.locked; saveState();} }
 window.delP = function(id) { if(confirm("Del?")){state.phases=state.phases.filter(x=>x.id!==id); saveState();} }
+
+// --- Deadline Notification ---
+window.sendDeadlineEmail = function() {
+  let emails = state.members.map(m => m.email).filter(Boolean);
+  if(!emails.length) return alert("No members with email addresses found.");
+  let bcc = emails.join(',');
+  let subject = encodeURIComponent("MIH Project Deadline Reminder");
+  let body = encodeURIComponent("Hello MIH Team,\n\nThis is a reminder that our project deadline is this Friday at 11:59 PM.\n\nPlease ensure your tasks are marked as 'done' and all reports are submitted with the necessary document uploads and references via the MIH Project Tracker.\n\nThank you!");
+  window.location.href = `mailto:?bcc=${bcc}&subject=${subject}&body=${body}`;
+}
 
 // --- Edit Request Approval (Admin) ---
 window.viewEditRequests = function() {
