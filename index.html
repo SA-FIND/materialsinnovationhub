@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'self';">
 <title>MIH Project Tracker V3</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -151,8 +152,8 @@
       <div id="realtime-clock" style="font-size: 12px; font-weight: 600; color: var(--mih-accent); background: var(--panel-bg); padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--panel-border);"></div>
       <div class="badge warning" style="font-size: 11px;">⏰ Deadline: Friday 11:59 PM</div>
       <button class="btn" onclick="toggleTheme()">🌓 Theme</button>
-      <span id="user-status" style="font-weight: 600; margin-left: 1rem;">View Only</span>
-      <button class="btn btn-primary" id="login-btn" onclick="openLogin()">Login</button>
+      <span id="user-status" style="font-weight: 600; margin-left: 1rem;">👁 View-Only Mode</span>
+      <button class="btn btn-primary" id="login-btn" onclick="openLogin()">Local View Mode</button>
       <button class="btn" id="logout-btn" style="display:none;" onclick="logout()">Logout</button>
     </div>
   </header>
@@ -286,12 +287,13 @@
   <!-- PROFILE -->
   <div id="profile" class="view">
     <div class="glass-panel" style="max-width: 400px; margin: 0 auto;">
-      <h3>Change Password</h3>
-      <div class="form-group" style="margin-top: 1rem;">
-        <label>New Password</label>
-        <input type="password" id="prof-pwd">
-      </div>
-      <button class="btn btn-primary" style="width: 100%;" onclick="savePassword()">Update Password</button>
+      <h3>Local View Mode</h3>
+      <p class="text-muted" style="margin-top: 1rem; font-size: 13px; line-height: 1.6;">
+        Currently viewing as: <strong id="prof-role-display"></strong><br>
+        This is a <em>local-only</em> view mode — no real authentication is performed.
+        Anyone with access to this device can switch roles.
+      </p>
+      <button class="btn" style="margin-top: 1rem; width: 100%;" onclick="logout()">Exit to View-Only Mode</button>
     </div>
   </div>
 </div>
@@ -310,9 +312,8 @@
 
 <script>
 let state = {
-  v: 3.4,
+  v: 3.5,
   theme: 'dark',
-  pin: '1509442', // Hashed default PIN (1234)
   overview: `Cassava Biopolymer Project
 Materials Innovation Hub \u2013 Club Activity Plan
 
@@ -375,8 +376,17 @@ let currentUser = { role: 'none', id: null }; // roles: none, admin, member
 
 function init() {
   let saved = localStorage.getItem('mih_v3');
-  if (saved) state = Object.assign(state, JSON.parse(saved));
-  
+  if (saved) {
+    try {
+      let parsed = JSON.parse(saved);
+      delete parsed.pin;
+      if (Array.isArray(parsed.members)) parsed.members.forEach(m => delete m.pwd);
+      state = Object.assign(state, parsed);
+    } catch(e) {}
+  }
+  // Always strip any leftover credentials
+  delete state.pin;
+  if (Array.isArray(state.members)) state.members.forEach(m => delete m.pwd);
   document.documentElement.setAttribute('data-theme', state.theme);
   applyRole(); renderAll();
 }
@@ -392,17 +402,21 @@ function toggleTheme() {
   saveState();
 }
 
-// --- Security (Basic Obfuscation) ---
-function hashStr(s) {
-  let h = 0;
-  for(let i=0; i<s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
-  return h.toString();
+// --- HTML Escape Helper ---
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // --- Format Helper ---
 function formatName(m) {
   if(!m) return '';
-  return m.tag ? `${m.name} <span class="tag-badge">${m.tag}</span>` : m.name;
+  return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
 }
 
 // --- Modals & Auth ---
@@ -415,14 +429,19 @@ function openModal(title, html, onSave) {
 function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
 function openLogin() {
+  let memberOptions = state.members.length
+    ? state.members.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')
+    : '<option value="">No members configured yet</option>';
   let html = `
-    <div class="tabs"><button class="tab-btn active" id="btn-log-m" onclick="togLog('m')">Member</button><button class="tab-btn" id="btn-log-a" onclick="togLog('a')">President</button></div>
+    <p class="text-muted" style="margin-bottom:1rem; font-size:12px; padding:0.6rem 0.75rem; background:rgba(245,158,11,0.1); border-radius:6px; border:1px solid rgba(245,158,11,0.3); line-height:1.5;">
+      ⚠️ <b>Local-only view mode.</b> No real authentication is performed. Anyone on this device can switch roles freely.
+    </p>
+    <div class="tabs"><button class="tab-btn active" id="btn-log-m" onclick="togLog('m')">Member View</button><button class="tab-btn" id="btn-log-a" onclick="togLog('a')">Admin View</button></div>
     <div id="log-m-box">
-      <div class="form-group"><label>Email Address</label><input type="email" id="log-memail" placeholder="member@example.com"></div>
-      <div class="form-group"><label>Password (Default: 000)</label><input type="password" id="log-mpwd"></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>Select Your Name</label><select id="log-msel">${memberOptions}</select></div>
     </div>
     <div id="log-a-box" style="display:none">
-      <div class="form-group"><label>Admin PIN</label><input type="password" id="log-apin"></div>
+      <p class="text-muted" style="font-size:12px; margin-top:0.75rem;">Admin view grants full local control over all data. Use on trusted devices only.</p>
     </div>
   `;
   window.togLog = (t) => {
@@ -431,16 +450,13 @@ function openLogin() {
     document.getElementById('log-m-box').style.display = t==='m'?'block':'none';
     document.getElementById('log-a-box').style.display = t==='a'?'block':'none';
   };
-  openModal('Login', html, () => {
+  openModal('Enter Local View Mode', html, () => {
     if (document.getElementById('btn-log-a').classList.contains('active')) {
-      if (hashStr(document.getElementById('log-apin').value) === state.pin) { currentUser = { role: 'admin', id: null }; }
-      else { alert('Wrong PIN'); return false; }
+      currentUser = { role: 'admin', id: null };
     } else {
-      let email = document.getElementById('log-memail').value.trim().toLowerCase();
-      let pwd = document.getElementById('log-mpwd').value;
-      let m = state.members.find(x => x.email && x.email.toLowerCase() === email);
-      if (m && m.pwd === pwd) { currentUser = { role: 'member', id: m.id }; }
-      else { alert('Wrong Email or Password'); return false; }
+      let sel = document.getElementById('log-msel');
+      if (!sel || !sel.value) { alert('Select a member'); return false; }
+      currentUser = { role: 'member', id: sel.value };
     }
     applyRole();
   });
@@ -448,13 +464,15 @@ function openLogin() {
 
 function applyRole() {
   document.body.setAttribute('data-role', currentUser.role);
-  let s = 'View Only';
-  if (currentUser.role === 'admin') s = '👑 Admin';
+  let s = '👁 View-Only Mode';
+  if (currentUser.role === 'admin') s = '👑 Admin (Local)';
   else if (currentUser.role === 'member') {
     let m = state.members.find(x => x.id === currentUser.id);
     s = `👤 ${m ? m.name : ''}`;
   }
   document.getElementById('user-status').textContent = s;
+  let profDisp = document.getElementById('prof-role-display');
+  if (profDisp) profDisp.textContent = s;
   document.getElementById('login-btn').style.display = currentUser.role==='none' ? 'inline-block' : 'none';
   document.getElementById('logout-btn').style.display = currentUser.role!=='none' ? 'inline-block' : 'none';
   document.getElementById('profile-tab').style.display = currentUser.role!=='none' ? 'inline-block' : 'none';
@@ -463,13 +481,6 @@ function applyRole() {
   renderAll();
 }
 function logout() { currentUser = { role: 'none', id: null }; applyRole(); }
-function savePassword() {
-  let np = document.getElementById('prof-pwd').value;
-  if(!np) return alert("Enter password");
-  if (currentUser.role === 'admin') state.pin = hashStr(np);
-  else { let m = state.members.find(x=>x.id===currentUser.id); if(m) m.pwd = np; }
-  alert("Password updated!"); document.getElementById('prof-pwd').value=''; saveState();
-}
 
 // --- Logic ---
 function getAttRate(mid) {
@@ -518,13 +529,13 @@ function renderAll() {
   let actSess = state.sessions.find(s=>s.active);
   document.getElementById('btn-signin').style.display = (currentUser.role==='member' && actSess) ? 'inline-block' : 'none';
   
-  let aH = `<tr><th>Member</th>${state.sessions.map(s=>`<th>${s.label}${s.active?' <span style="color:var(--success)">●</span>':''}</th>`).join('')}<th>Rate</th></tr>`;
+  let aH = `<tr><th>Member</th>${state.sessions.map(s=>`<th>${esc(s.label)}${s.active?' <span style="color:var(--success)">●</span>':''}</th>`).join('')}<th>Rate</th></tr>`;
   state.members.forEach(m => {
     aH += `<tr><td>${formatName(m)}</td>`;
     state.sessions.forEach(s => {
       let st = state.attendance[m.id]?.[s.id] || 'none';
       let dis = currentUser.role==='admin' ? '' : 'disabled';
-      aH += `<td><button class="att-btn ${st}" ${dis} onclick="togAtt('${m.id}','${s.id}')">${st==='present'?'✓':st==='absent'?'✕':''}</button></td>`;
+      aH += `<td><button class="att-btn ${st}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st==='present'?'✓':st==='absent'?'✕':''}</button></td>`;
     });
     aH += `<td>${getAttRate(m.id)}%</td></tr>`;
   });
@@ -545,18 +556,18 @@ function renderAll() {
       
       let opts = ['pending','in progress','done'].map(o=>`<option ${t.status===o?'selected':''}>${o}</option>`).join('');
       
-      let fileInfo = t.fileName ? `<a href="#" onclick="downloadFile('task','${t.id}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${t.fileName}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+      let fileInfo = t.fileName ? `<a href="#" onclick="downloadFile('task','${esc(t.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
       h += `<tr>
-        <td><div style="font-weight:600; margin-bottom:4px">${t.desc}</div></td>
+        <td><div style="font-weight:600; margin-bottom:4px">${esc(t.desc)}</div></td>
         <td><span class="text-muted" style="font-size:12px">${mN || 'None'}</span></td>
-        <td><span class="badge">${ph.name||'?'}</span> ${ph.locked?'🔒':''}</td>
+        <td><span class="badge">${esc(ph.name||'?')}</span> ${ph.locked?'🔒':''}</td>
         <td>
           ${fileInfo}<br>
-          ${canEdit ? `<input type="file" accept=".pdf,.doc,.docx" onchange="uploadTaskFile('${t.id}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}
-          <input type="text" placeholder="References (Required)" value="${t.refs}" onchange="updT('${t.id}','refs',this.value)" ${!canEdit?'disabled':''} style="font-size:12px; padding:0.25rem; margin-top:4px">
+          ${canEdit ? `<input type="file" accept=".pdf,.doc,.docx" onchange="uploadTaskFile('${esc(t.id)}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}
+          <input type="text" placeholder="References (Required)" value="${esc(t.refs)}" onchange="updT('${esc(t.id)}','refs',this.value)" ${!canEdit?'disabled':''} style="font-size:12px; padding:0.25rem; margin-top:4px">
         </td>
-        <td><select onchange="updT('${t.id}','status',this.value)" ${!canEdit?'disabled':''}>${opts}</select></td>
-        <td class="admin-only"><button class="btn btn-sm" onclick="openTaskModal('${t.id}')">✎</button></td>
+        <td><select onchange="updT('${esc(t.id)}','status',this.value)" ${!canEdit?'disabled':''}>${opts}</select></td>
+        <td class="admin-only"><button class="btn btn-sm" onclick="openTaskModal('${esc(t.id)}')">✎</button></td>
       </tr>`;
     });
     document.getElementById(tblId).innerHTML = h;
@@ -569,11 +580,11 @@ function renderAll() {
   state.reports.forEach(r => {
     let canEdit = currentUser.role==='admin' || currentUser.role==='member';
     let opts = ['pending','in progress','done'].map(o=>`<option ${r.status===o?'selected':''}>${o}</option>`).join('');
-    let rFileInfo = r.fileName ? `<a href="#" onclick="downloadFile('report','${r.id}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${r.fileName}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+    let rFileInfo = r.fileName ? `<a href="#" onclick="downloadFile('report','${esc(r.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
     rH += `<tr>
-      <td style="font-weight:600">${r.type}</td>
-      <td>${rFileInfo}<br>${canEdit ? `<input type="file" accept=".doc,.docx" onchange="uploadReportFile('${r.id}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}</td>
-      <td><select onchange="updR('${r.id}','status',this.value)" ${!canEdit?'disabled':''}>${opts}</select></td>
+      <td style="font-weight:600">${esc(r.type)}</td>
+      <td>${rFileInfo}<br>${canEdit ? `<input type="file" accept=".doc,.docx" onchange="uploadReportFile('${esc(r.id)}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}</td>
+      <td><select onchange="updR('${esc(r.id)}','status',this.value)" ${!canEdit?'disabled':''}>${opts}</select></td>
     </tr>`;
   });
   document.getElementById('reports-table').innerHTML = rH;
@@ -592,8 +603,8 @@ function renderAll() {
       <td><span class="badge ${e>=90?'success':'warning'}">${e}%</span></td>
       <td>${eligible?'<span style="color:var(--success); font-weight:600">✓ Certified</span>':'<span class="text-muted">Ineligible</span>'}</td>
       <td class="admin-only">
-        <button class="btn btn-sm" onclick="openMemberModal('${m.id}')">Edit</button> 
-        <button class="btn btn-sm btn-danger" onclick="delM('${m.id}')">Del</button>
+        <button class="btn btn-sm" onclick="openMemberModal('${esc(m.id)}')">Edit</button> 
+        <button class="btn btn-sm btn-danger" onclick="delM('${esc(m.id)}')">Del</button>
       </td>
     </tr>`;
   });
@@ -601,47 +612,53 @@ function renderAll() {
 
   // Admin Phases
   document.getElementById('phases-table').innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` + 
-    state.phases.map(p=>`<tr><td>${p.name}</td><td>${p.locked?'🔒 Locked':'🔓 Open'}</td>
-      <td><button class="btn btn-sm" onclick="togP('${p.id}')">${p.locked?'Unlock':'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delP('${p.id}')">Del</button></td></tr>`).join('');
+    state.phases.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.locked?'🔒 Locked':'🔓 Open'}</td>
+      <td><button class="btn btn-sm" onclick="togP('${esc(p.id)}')">${p.locked?'Unlock':'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delP('${esc(p.id)}')">Del</button></td></tr>`).join('');
 }
 
 // --- Actions ---
 window.editOverview = function() {
+  if (currentUser.role !== 'admin') return;
   openModal('Edit Project Overview', `
     <div class="form-group"><label>Overview Content</label>
-    <textarea id="ov-text" rows="10" style="min-height:200px">${state.overview}</textarea></div>
+    <textarea id="ov-text" rows="10" style="min-height:200px">${esc(state.overview)}</textarea></div>
   `, () => {
     state.overview = document.getElementById('ov-text').value;
     saveState();
   });
 }
 window.manageSessions = function() {
+  if (currentUser.role !== 'admin') return;
   let html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
-    <span>${s.label} ${s.active?'<span style="color:var(--success)">● Active</span>':''}</span>
+    <span>${esc(s.label)} ${s.active?'<span style="color:var(--success)">● Active</span>':''}</span>
     <div class="flex-gap">
-      <button class="btn btn-sm" onclick="renameSess('${s.id}')">Rename</button>
-      <button class="btn btn-sm" onclick="togSess('${s.id}')">${s.active?'Deactivate':'Set Active'}</button>
-      <button class="btn btn-sm btn-danger" onclick="delSess('${s.id}')">Del</button>
+      <button class="btn btn-sm" onclick="renameSess('${esc(s.id)}')">Rename</button>
+      <button class="btn btn-sm" onclick="togSess('${esc(s.id)}')">${s.active?'Deactivate':'Set Active'}</button>
+      <button class="btn btn-sm btn-danger" onclick="delSess('${esc(s.id)}')">Del</button>
     </div>
   </div>`).join('') +
     `<button class="btn btn-primary" style="margin-top:1rem; width:100%" onclick="addSession()">+ New Session</button>`;
   openModal('Manage Sessions', html, () => { saveState(); });
 }
 window.addSession = function() {
+  if (currentUser.role !== 'admin') return;
   let n = prompt("Session Name:");
   if(n) { state.sessions.forEach(s=>s.active=false); state.sessions.push({id:'s'+Date.now(), label:n, active:true}); saveState(); closeModal(); manageSessions(); }
 }
 window.togSess = function(id) {
+  if (currentUser.role !== 'admin') return;
   state.sessions.forEach(s => { if(s.id===id) s.active=!s.active; else s.active=false; });
   saveState(); closeModal(); manageSessions();
 }
 window.renameSess = function(id) {
+  if (currentUser.role !== 'admin') return;
   let s = state.sessions.find(x=>x.id===id);
   if(!s) return;
   let n = prompt('New session name:', s.label);
   if(n) { s.label = n; saveState(); closeModal(); manageSessions(); }
 }
 window.delSess = function(id) {
+  if (currentUser.role !== 'admin') return;
   let s = state.sessions.find(x=>x.id===id);
   if(!s) return;
   if(!confirm(`Are you sure you want to delete session "${s.label}"?`)) return;
@@ -652,6 +669,7 @@ window.delSess = function(id) {
   saveState(); closeModal(); manageSessions();
 }
 window.memberSignIn = function() {
+  if (currentUser.role !== 'member') return;
   let act = state.sessions.find(s=>s.active);
   if(!act) return;
   if(!state.attendance[currentUser.id]) state.attendance[currentUser.id] = {};
@@ -659,6 +677,7 @@ window.memberSignIn = function() {
   alert("Signed in successfully!"); saveState();
 }
 window.togAtt = function(mid, sid) {
+  if (currentUser.role !== 'admin') return;
   let curr = state.attendance[mid]?.[sid] || 'none';
   if(!state.attendance[mid]) state.attendance[mid]={};
   state.attendance[mid][sid] = curr==='none'?'present':curr==='present'?'absent':'none';
@@ -666,15 +685,16 @@ window.togAtt = function(mid, sid) {
 }
 
 window.openTaskModal = function(tid) {
+  if (currentUser.role !== 'admin') return;
   let t = state.tasks.find(x=>x.id===tid) || {id:'', desc:'', phaseId:'', mids:[]};
-  let mO = state.members.map(m=>`<option value="${m.id}" ${t.mids.includes(m.id)?'selected':''}>${m.name}</option>`).join('');
-  let pO = state.phases.map(p=>`<option value="${p.id}" ${t.phaseId===p.id?'selected':''}>${p.name}</option>`).join('');
+  let mO = state.members.map(m=>`<option value="${esc(m.id)}" ${t.mids.includes(m.id)?'selected':''}>${esc(m.name)}</option>`).join('');
+  let pO = state.phases.map(p=>`<option value="${esc(p.id)}" ${t.phaseId===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
   
   openModal(tid?'Edit Task':'New Task', `
-    <div class="form-group"><label>Description</label><input type="text" id="tm-desc" value="${t.desc}"></div>
+    <div class="form-group"><label>Description</label><input type="text" id="tm-desc" value="${esc(t.desc)}"></div>
     <div class="form-group"><label>Phase</label><select id="tm-ph">${pO}</select></div>
     <div class="form-group"><label>Assignees (Ctrl/Cmd+Click for multiple)</label><select id="tm-mids" multiple size="4">${mO}</select></div>
-    ${tid ? `<button class="btn btn-danger" style="width:100%; margin-top:1rem" onclick="delT('${tid}')">Delete Task</button>` : ''}
+    ${tid ? `<button class="btn btn-danger" style="width:100%; margin-top:1rem" onclick="delT('${esc(tid)}')">Delete Task</button>` : ''}
   `, () => {
     let sels = Array.from(document.getElementById('tm-mids').selectedOptions).map(x=>x.value);
     let obj = { desc: document.getElementById('tm-desc').value, phaseId: document.getElementById('tm-ph').value, mids: sels };
@@ -702,7 +722,7 @@ window.updT = function(id, f, v) {
   t[f]=v; saveState();
 }
 window.updR = function(id, f, v) { let r=state.reports.find(x=>x.id===id); if(r) r[f]=v; saveState(); }
-window.delT = function(id) { if(confirm("Del?")){state.tasks=state.tasks.filter(x=>x.id!==id); saveState(); closeModal();} }
+window.delT = function(id) { if (currentUser.role !== 'admin') return; if(confirm("Del?")){state.tasks=state.tasks.filter(x=>x.id!==id); saveState(); closeModal();} }
 
 // --- File Upload/Download ---
 function getBase64(file) {
@@ -754,30 +774,32 @@ window.downloadFile = function(type, id) {
 }
 
 window.openMemberModal = function(mid) {
+  if (currentUser.role !== 'admin') return;
   let m = state.members.find(x=>x.id===mid) || {name:'', email:'', tag:''};
   openModal(mid?'Edit Member':'Add Member', `
-    <div class="form-group"><label>Name</label><input type="text" id="am-name" value="${m.name}"></div>
-    <div class="form-group"><label>Email Address</label><input type="email" id="am-email" value="${m.email||''}" placeholder="For login & notifications"></div>
-    <div class="form-group"><label>Nickname / Tag</label><input type="text" id="am-tag" value="${m.tag||''}" placeholder="e.g. @Leader"></div>
+    <div class="form-group"><label>Name</label><input type="text" id="am-name" value="${esc(m.name)}"></div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="am-email" value="${esc(m.email||'')}" placeholder="For notifications"></div>
+    <div class="form-group"><label>Nickname / Tag</label><input type="text" id="am-tag" value="${esc(m.tag||'')}" placeholder="e.g. @Leader"></div>
   `, () => {
     let n = document.getElementById('am-name').value.trim();
     let e = document.getElementById('am-email').value.trim();
     let t = document.getElementById('am-tag').value.trim();
     if(!n) return alert("Name required");
-    if(!e) return alert("Email required for login");
+    if(!e) return alert("Email required for notifications");
     if(mid) { m.name=n; m.email=e; m.tag=t; }
-    else { state.members.push({id:'m'+Date.now(), name:n, email:e, tag:t, pwd:'000'}); }
+    else { state.members.push({id:'m'+Date.now(), name:n, email:e, tag:t}); }
     saveState();
   });
 }
-window.delM = function(id) { if(confirm("Del?")){state.members=state.members.filter(x=>x.id!==id); saveState();} }
+window.delM = function(id) { if (currentUser.role !== 'admin') return; if(confirm("Del?")){state.members=state.members.filter(x=>x.id!==id); saveState();} }
 
-window.addPhase = function() { let n=prompt("Name:"); if(n){state.phases.push({id:'ph'+Date.now(),name:n,locked:false});saveState();} }
-window.togP = function(id) { let p=state.phases.find(x=>x.id===id); if(p){p.locked=!p.locked; saveState();} }
-window.delP = function(id) { if(confirm("Del?")){state.phases=state.phases.filter(x=>x.id!==id); saveState();} }
+window.addPhase = function() { if (currentUser.role !== 'admin') return; let n=prompt("Name:"); if(n){state.phases.push({id:'ph'+Date.now(),name:n,locked:false});saveState();} }
+window.togP = function(id) { if (currentUser.role !== 'admin') return; let p=state.phases.find(x=>x.id===id); if(p){p.locked=!p.locked; saveState();} }
+window.delP = function(id) { if (currentUser.role !== 'admin') return; if(confirm("Del?")){state.phases=state.phases.filter(x=>x.id!==id); saveState();} }
 
 // --- Deadline Notification ---
 window.sendDeadlineEmail = function() {
+  if (currentUser.role !== 'admin') return;
   let emails = state.members.map(m => m.email).filter(Boolean);
   if(!emails.length) return alert("No members with email addresses found.");
   let bcc = emails.join(',');
@@ -788,6 +810,7 @@ window.sendDeadlineEmail = function() {
 
 // --- Edit Request Approval (Admin) ---
 window.viewEditRequests = function() {
+  if (currentUser.role !== 'admin') return;
   if(!state.editRequests) state.editRequests=[];
   let pending = state.editRequests.filter(r=>r.status==='pending');
   if(!pending.length) { alert('No pending edit requests.'); return; }
@@ -795,17 +818,18 @@ window.viewEditRequests = function() {
     let t = state.tasks.find(x=>x.id===r.tid);
     let m = state.members.find(x=>x.id===r.mid);
     return `<div class="glass-panel" style="padding:1rem; margin-bottom:0.5rem">
-      <div><b>${m?.name||'?'}</b> wants to change <b>${t?.desc||'?'}</b></div>
-      <div class="text-muted" style="font-size:12px">New value: ${r.newVal}</div>
+      <div><b>${esc(m?.name||'?')}</b> wants to change <b>${esc(t?.desc||'?')}</b></div>
+      <div class="text-muted" style="font-size:12px">New value: ${esc(r.newVal)}</div>
       <div class="flex-gap" style="margin-top:0.5rem">
-        <button class="btn btn-sm btn-primary" onclick="approveER('${r.id}')">Approve</button>
-        <button class="btn btn-sm btn-danger" onclick="rejectER('${r.id}')">Reject</button>
+        <button class="btn btn-sm btn-primary" onclick="approveER('${esc(r.id)}')">Approve</button>
+        <button class="btn btn-sm btn-danger" onclick="rejectER('${esc(r.id)}')">Reject</button>
       </div>
     </div>`;
   }).join('');
   openModal('Edit Requests', html, ()=>{});
 }
 window.approveER = function(id) {
+  if (currentUser.role !== 'admin') return;
   let r = state.editRequests.find(x=>x.id===id);
   if(!r) return;
   let t = state.tasks.find(x=>x.id===r.tid);
@@ -814,12 +838,14 @@ window.approveER = function(id) {
   saveState(); closeModal(); viewEditRequests();
 }
 window.rejectER = function(id) {
+  if (currentUser.role !== 'admin') return;
   let r = state.editRequests.find(x=>x.id===id);
   if(r) r.status='rejected';
   saveState(); closeModal(); viewEditRequests();
 }
 
 window.exportJSON = function() {
+  if (currentUser.role !== 'admin') return;
   let a = document.createElement('a');
   a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
   a.download = "mih_export.json"; a.click();
