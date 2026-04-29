@@ -290,9 +290,9 @@
       <h3>Local View Mode</h3>
       <p class="text-muted" style="margin-top: 1rem; font-size: 13px; line-height: 1.6;">
         Currently viewing as: <strong id="prof-role-display"></strong><br>
-        This is a <em>local-only</em> view mode — no real authentication is performed.
-        Anyone with access to this device can switch roles.
+        This is a <em>local-only</em> view mode — protected by a PIN but not a server-side authentication system.
       </p>
+      <div id="admin-profile-section"></div>
       <button class="btn" style="margin-top: 1rem; width: 100%;" onclick="logout()">Exit to View-Only Mode</button>
     </div>
   </div>
@@ -413,6 +413,12 @@ function esc(s) {
     .replace(/'/g, '&#39;');
 }
 
+// --- SHA-256 Helper (WebCrypto) ---
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // --- Format Helper ---
 function formatName(m) {
   if(!m) return '';
@@ -424,24 +430,40 @@ function openModal(title, html, onSave) {
   document.getElementById('m-title').textContent = title;
   document.getElementById('m-body').innerHTML = html;
   document.getElementById('modal').style.display = 'flex';
-  document.getElementById('m-save').onclick = () => { if (onSave() !== false) closeModal(); };
+  document.getElementById('m-save').onclick = async () => { if (await onSave() !== false) closeModal(); };
 }
 function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
 function openLogin() {
+  let adminPinSet = !!localStorage.getItem('mih_admin_pin');
   let memberOptions = state.members.length
     ? state.members.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')
     : '<option value="">No members configured yet</option>';
+
+  let adminSection = adminPinSet
+    ? `<p class="text-muted" style="font-size:12px; margin-top:0.75rem;">Admin view grants full local control over all data. Use on trusted devices only.</p>
+       <div class="form-group" style="margin-top:0.75rem;"><label>Admin PIN</label><input type="password" id="log-apin" placeholder="Enter admin PIN" autocomplete="current-password"></div>`
+    : `<p class="text-muted" style="font-size:12px; margin-top:0.75rem;">No admin PIN is set. Create one now to secure this device.</p>
+       <div class="form-group" style="margin-top:0.75rem;"><label>New Admin PIN</label><input type="password" id="log-apin" placeholder="Choose a PIN" autocomplete="new-password"></div>
+       <div class="form-group"><label>Confirm PIN</label><input type="password" id="log-apin2" placeholder="Confirm PIN" autocomplete="new-password"></div>
+       <p class="text-muted" style="font-size:11px; margin-top:0.25rem;">⚠️ Store this PIN safely. If forgotten, you must clear browser storage to reset access.</p>`;
+
+  let firstMember = state.members[0];
+  let firstHasPin = !!(firstMember && firstMember.pinHash);
+
   let html = `
     <p class="text-muted" style="margin-bottom:1rem; font-size:12px; padding:0.6rem 0.75rem; background:rgba(245,158,11,0.1); border-radius:6px; border:1px solid rgba(245,158,11,0.3); line-height:1.5;">
-      ⚠️ <b>Local-only view mode.</b> No real authentication is performed. Anyone on this device can switch roles freely.
+      ⚠️ <b>Protected by a local PIN</b> — not a server-side authentication system.
     </p>
     <div class="tabs"><button class="tab-btn active" id="btn-log-m" onclick="togLog('m')">Member View</button><button class="tab-btn" id="btn-log-a" onclick="togLog('a')">Admin View</button></div>
     <div id="log-m-box">
-      <div class="form-group" style="margin-top:0.75rem;"><label>Select Your Name</label><select id="log-msel">${memberOptions}</select></div>
+      <div class="form-group" style="margin-top:0.75rem;"><label>Select Your Name</label><select id="log-msel" onchange="togMPin()">${memberOptions}</select></div>
+      <div id="log-mpin-group" style="display:${firstHasPin ? 'block' : 'none'}">
+        <div class="form-group"><label>Member PIN</label><input type="password" id="log-mpin" placeholder="Enter your PIN" autocomplete="current-password"></div>
+      </div>
     </div>
     <div id="log-a-box" style="display:none">
-      <p class="text-muted" style="font-size:12px; margin-top:0.75rem;">Admin view grants full local control over all data. Use on trusted devices only.</p>
+      ${adminSection}
     </div>
   `;
   window.togLog = (t) => {
@@ -450,12 +472,38 @@ function openLogin() {
     document.getElementById('log-m-box').style.display = t==='m'?'block':'none';
     document.getElementById('log-a-box').style.display = t==='a'?'block':'none';
   };
-  openModal('Enter Local View Mode', html, () => {
+  window.togMPin = () => {
+    let sel = document.getElementById('log-msel');
+    if (!sel) return;
+    let member = state.members.find(m => m.id === sel.value);
+    let group = document.getElementById('log-mpin-group');
+    if (group) group.style.display = (member && member.pinHash) ? 'block' : 'none';
+    let pinInput = document.getElementById('log-mpin');
+    if (pinInput) pinInput.value = '';
+  };
+  openModal('Enter Local View Mode', html, async () => {
     if (document.getElementById('btn-log-a').classList.contains('active')) {
+      let pin = document.getElementById('log-apin').value;
+      if (!pin) { alert('Enter a PIN'); return false; }
+      if (!adminPinSet) {
+        let pin2 = document.getElementById('log-apin2').value;
+        if (pin !== pin2) { alert('PINs do not match'); return false; }
+        localStorage.setItem('mih_admin_pin', await sha256(pin));
+      } else {
+        if (await sha256(pin) !== localStorage.getItem('mih_admin_pin')) {
+          alert('Incorrect admin PIN'); return false;
+        }
+      }
       currentUser = { role: 'admin', id: null };
     } else {
       let sel = document.getElementById('log-msel');
       if (!sel || !sel.value) { alert('Select a member'); return false; }
+      let member = state.members.find(m => m.id === sel.value);
+      if (member && member.pinHash) {
+        let pin = document.getElementById('log-mpin')?.value || '';
+        if (!pin) { alert('This member requires a PIN'); return false; }
+        if (await sha256(pin) !== member.pinHash) { alert('Incorrect member PIN'); return false; }
+      }
       currentUser = { role: 'member', id: sel.value };
     }
     applyRole();
@@ -476,7 +524,15 @@ function applyRole() {
   document.getElementById('login-btn').style.display = currentUser.role==='none' ? 'inline-block' : 'none';
   document.getElementById('logout-btn').style.display = currentUser.role!=='none' ? 'inline-block' : 'none';
   document.getElementById('profile-tab').style.display = currentUser.role!=='none' ? 'inline-block' : 'none';
-  
+
+  let adminProfileSec = document.getElementById('admin-profile-section');
+  if (adminProfileSec) {
+    adminProfileSec.innerHTML = currentUser.role === 'admin'
+      ? `<button class="btn" style="margin-top:1rem;width:100%;" onclick="changeAdminPin()">🔑 Change Admin PIN</button>
+         <p class="text-muted" style="font-size:11px;margin-top:0.5rem;">⚠️ If the admin PIN is forgotten, clear browser storage to reset access.</p>`
+      : '';
+  }
+
   if (currentUser.role === 'none') switchTab('dashboard');
   renderAll();
 }
@@ -776,18 +832,33 @@ window.downloadFile = function(type, id) {
 window.openMemberModal = function(mid) {
   if (currentUser.role !== 'admin') return;
   let m = state.members.find(x=>x.id===mid) || {name:'', email:'', tag:''};
+  let pinPlaceholder = m.pinHash ? 'PIN already set — enter new to change' : 'Optional: set a login PIN';
+  let clearPinRow = m.pinHash
+    ? `<div class="form-group"><label style="display:flex;align-items:center;gap:0.5rem;font-weight:normal;cursor:pointer;"><input type="checkbox" id="am-clearpin"> Clear existing PIN (allow login without PIN)</label></div>`
+    : '';
   openModal(mid?'Edit Member':'Add Member', `
     <div class="form-group"><label>Name</label><input type="text" id="am-name" value="${esc(m.name)}"></div>
     <div class="form-group"><label>Email Address</label><input type="email" id="am-email" value="${esc(m.email||'')}" placeholder="For notifications"></div>
     <div class="form-group"><label>Nickname / Tag</label><input type="text" id="am-tag" value="${esc(m.tag||'')}" placeholder="e.g. @Leader"></div>
-  `, () => {
+    <div class="form-group"><label>Member PIN (optional)</label><input type="password" id="am-pin" placeholder="${pinPlaceholder}" autocomplete="new-password"></div>
+    ${clearPinRow}
+  `, async () => {
     let n = document.getElementById('am-name').value.trim();
     let e = document.getElementById('am-email').value.trim();
     let t = document.getElementById('am-tag').value.trim();
+    let pinVal = document.getElementById('am-pin').value;
+    let clearPin = document.getElementById('am-clearpin')?.checked || false;
     if(!n) return alert("Name required");
     if(!e) return alert("Email required for notifications");
-    if(mid) { m.name=n; m.email=e; m.tag=t; }
-    else { state.members.push({id:'m'+Date.now(), name:n, email:e, tag:t}); }
+    if(mid) {
+      m.name=n; m.email=e; m.tag=t;
+      if (clearPin) { delete m.pinHash; }
+      else if (pinVal) { m.pinHash = await sha256(pinVal); }
+    } else {
+      let newMember = {id:'m'+Date.now(), name:n, email:e, tag:t};
+      if (pinVal) { newMember.pinHash = await sha256(pinVal); }
+      state.members.push(newMember);
+    }
     saveState();
   });
 }
