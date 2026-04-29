@@ -535,7 +535,7 @@ function renderAll() {
     state.sessions.forEach(s => {
       let st = state.attendance[m.id]?.[s.id] || 'none';
       let dis = currentUser.role==='admin' ? '' : 'disabled';
-      aH += `<td><button class="att-btn ${st}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st==='present'?'✓':st==='absent'?'✕':''}</button></td>`;
+      aH += `<td><button class="att-btn ${esc(st)}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st==='present'?'✓':st==='absent'?'✕':''}</button></td>`;
     });
     aH += `<td>${getAttRate(m.id)}%</td></tr>`;
   });
