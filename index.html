@@ -310,9 +310,9 @@
 
 <script>
 let state = {
-  v: 3.3,
+  v: 3.4,
   theme: 'dark',
-  pin: '1234',
+  pin: '1509442', // Hashed default PIN (1234)
   overview: `Cassava Biopolymer Project
 Materials Innovation Hub \u2013 Club Activity Plan
 
@@ -392,6 +392,13 @@ function toggleTheme() {
   saveState();
 }
 
+// --- Security (Basic Obfuscation) ---
+function hashStr(s) {
+  let h = 0;
+  for(let i=0; i<s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+  return h.toString();
+}
+
 // --- Format Helper ---
 function formatName(m) {
   if(!m) return '';
@@ -426,7 +433,7 @@ function openLogin() {
   };
   openModal('Login', html, () => {
     if (document.getElementById('btn-log-a').classList.contains('active')) {
-      if (document.getElementById('log-apin').value === state.pin) { currentUser = { role: 'admin', id: null }; }
+      if (hashStr(document.getElementById('log-apin').value) === state.pin) { currentUser = { role: 'admin', id: null }; }
       else { alert('Wrong PIN'); return false; }
     } else {
       let email = document.getElementById('log-memail').value.trim().toLowerCase();
@@ -459,7 +466,7 @@ function logout() { currentUser = { role: 'none', id: null }; applyRole(); }
 function savePassword() {
   let np = document.getElementById('prof-pwd').value;
   if(!np) return alert("Enter password");
-  if (currentUser.role === 'admin') state.pin = np;
+  if (currentUser.role === 'admin') state.pin = hashStr(np);
   else { let m = state.members.find(x=>x.id===currentUser.id); if(m) m.pwd = np; }
   alert("Password updated!"); document.getElementById('prof-pwd').value=''; saveState();
 }
