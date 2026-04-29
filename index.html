@@ -751,13 +751,12 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
     }
 
     async function saveState() {
-      renderAll();
       try {
         await sb.from('project_state').upsert({ id: 1, data: state, updated_at: new Date().toISOString() });
       } catch (e) {
-        // Fallback to localStorage if Supabase is unavailable
         localStorage.setItem('mih_v3', JSON.stringify(state));
       }
+      renderAll();
     }
 
     function toggleTheme() {
@@ -1094,17 +1093,15 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
       const file = input.files[0];
       let t = state.tasks.find(x => x.id === id);
       if (!t) return;
-      const btn = input.nextElementSibling || input;
       input.disabled = true;
       try {
         const result = await uploadToStorage(file, 'tasks');
         t.fileUrl = result.url;
         t.fileName = result.name;
-        t.fileData = null; // clear old base64
+        t.fileData = null;
         await saveState();
-        alert('File uploaded successfully!');
-      } catch (e) { alert('Upload failed: ' + e.message); }
-      finally { input.disabled = false; input.value = ''; }
+        // renderAll() is called inside saveState(), DOM is rebuilt — no need to reset input
+      } catch (e) { alert('Upload failed: ' + e.message); renderAll(); }
     }
 
     window.uploadReportFile = async function (id, input) {
@@ -1119,9 +1116,7 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
         r.fileName = result.name;
         r.fileData = null;
         await saveState();
-        alert('Report uploaded successfully!');
-      } catch (e) { alert('Upload failed: ' + e.message); }
-      finally { input.disabled = false; input.value = ''; }
+      } catch (e) { alert('Upload failed: ' + e.message); renderAll(); }
     }
 
     window.downloadFile = function (type, id) {
