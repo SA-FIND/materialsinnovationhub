@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self';">
 <title>MIH Project Tracker V3</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --mih-blue: #010066;
@@ -311,6 +312,22 @@
 </div>
 
 <script>
+// ============================================================
+// SUPABASE CONFIGURATION
+// 1. Go to https://supabase.com/dashboard and create a project.
+// 2. Under Settings → API, copy your Project URL and anon/public key.
+// 3. Paste them below.
+// 4. Run the SQL in supabase-setup.sql in the Supabase SQL Editor.
+// 5. In Storage, create a private bucket named exactly: mih-files
+// ============================================================
+const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_PUBLIC_KEY';
+
+if (SUPABASE_URL.includes('YOUR_PROJECT_ID')) {
+  console.warn('[MIH] Supabase not configured. Open index.html and set SUPABASE_URL and SUPABASE_ANON_KEY, then run supabase-setup.sql.');
+}
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 let state = {
   v: 3.5,
   theme: 'dark',
@@ -374,15 +391,17 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
 
 let currentUser = { role: 'none', id: null }; // roles: none, admin, member
 
-function init() {
-  let saved = localStorage.getItem('mih_v3');
-  if (saved) {
-    try {
-      let parsed = JSON.parse(saved);
+async function init() {
+  try {
+    const { data, error } = await sb.from('app_state').select('state').eq('id', 'main').single();
+    if (data && data.state) {
+      let parsed = data.state;
       delete parsed.pin;
       if (Array.isArray(parsed.members)) parsed.members.forEach(m => delete m.pwd);
       state = Object.assign(state, parsed);
-    } catch(e) {}
+    }
+  } catch(e) {
+    console.warn('[MIH] Could not load state from Supabase, using defaults:', e.message);
   }
   // Always strip any leftover credentials
   delete state.pin;
@@ -392,7 +411,13 @@ function init() {
 }
 
 function saveState() {
-  localStorage.setItem('mih_v3', JSON.stringify(state));
+  // Deep-copy and strip legacy base64 blobs — files live in Supabase Storage now
+  let saveData = JSON.parse(JSON.stringify(state));
+  if (Array.isArray(saveData.tasks)) saveData.tasks.forEach(t => delete t.fileData);
+  if (Array.isArray(saveData.reports)) saveData.reports.forEach(r => delete r.fileData);
+  sb.from('app_state')
+    .upsert({ id: 'main', state: saveData, updated_at: new Date().toISOString() })
+    .then(({ error }) => { if (error) console.error('[MIH] Supabase save error:', error); });
   renderAll();
 }
 
@@ -793,40 +818,53 @@ function getBase64(file) {
 window.uploadTaskFile = async function(id, input) {
   if(!input.files || !input.files[0]) return;
   const file = input.files[0];
-  if(file.size > 2 * 1024 * 1024) { alert("File is too large. Max 2MB limit for LocalStorage."); input.value=''; return; }
   let t = state.tasks.find(x=>x.id===id);
   if(t) {
     try {
-      t.fileData = await getBase64(file);
+      const path = `tasks/${id}/${file.name}`;
+      const { error } = await sb.storage.from('mih-files').upload(path, file, { upsert: true });
+      if(error) throw error;
+      t.filePath = path;
       t.fileName = file.name;
+      delete t.fileData;
       saveState();
       alert("File attached!");
-    } catch (e) { alert("Error reading file."); }
+    } catch (e) { alert("Error uploading file: " + e.message); }
   }
 }
 
 window.uploadReportFile = async function(id, input) {
   if(!input.files || !input.files[0]) return;
   const file = input.files[0];
-  if(file.size > 2 * 1024 * 1024) { alert("File is too large. Max 2MB limit for LocalStorage."); input.value=''; return; }
   let r = state.reports.find(x=>x.id===id);
   if(r) {
     try {
-      r.fileData = await getBase64(file);
+      const path = `reports/${id}/${file.name}`;
+      const { error } = await sb.storage.from('mih-files').upload(path, file, { upsert: true });
+      if(error) throw error;
+      r.filePath = path;
       r.fileName = file.name;
+      delete r.fileData;
       saveState();
       alert("File attached!");
-    } catch (e) { alert("Error reading file."); }
+    } catch (e) { alert("Error uploading file: " + e.message); }
   }
 }
 
-window.downloadFile = function(type, id) {
+window.downloadFile = async function(type, id) {
   let item = type==='task' ? state.tasks.find(x=>x.id===id) : state.reports.find(x=>x.id===id);
-  if(!item || !item.fileData) return alert("No file attached.");
-  let a = document.createElement('a');
-  a.href = item.fileData;
-  a.download = item.fileName;
-  a.click();
+  if(!item || (!item.filePath && !item.fileData)) return alert("No file attached.");
+  // Legacy: base64 data attached before Supabase migration
+  if(item.fileData && !item.filePath) {
+    let a = document.createElement('a');
+    a.href = item.fileData;
+    a.download = item.fileName;
+    a.click();
+    return;
+  }
+  const { data, error } = await sb.storage.from('mih-files').createSignedUrl(item.filePath, 60);
+  if(error) return alert("Error getting download link: " + error.message);
+  window.open(data.signedUrl, '_blank');
 }
 
 window.openMemberModal = function(mid) {
