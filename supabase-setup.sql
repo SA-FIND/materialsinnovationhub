@@ -33,14 +33,14 @@ CREATE POLICY "anon_update" ON public.app_state
 --    Then run the policies below.
 -- ============================================================
 
-CREATE POLICY "anon_upload" ON storage.objects
+CREATE POLICY "storage_anon_upload" ON storage.objects
   FOR INSERT TO anon
   WITH CHECK (bucket_id = 'mih-files');
 
-CREATE POLICY "anon_select" ON storage.objects
+CREATE POLICY "storage_anon_select" ON storage.objects
   FOR SELECT TO anon
   USING (bucket_id = 'mih-files');
 
-CREATE POLICY "anon_update" ON storage.objects
+CREATE POLICY "storage_anon_update" ON storage.objects
   FOR UPDATE TO anon
   USING (bucket_id = 'mih-files');

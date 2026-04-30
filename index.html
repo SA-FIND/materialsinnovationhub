@@ -815,13 +815,18 @@ function getBase64(file) {
   });
 }
 
+// Sanitize file names before using them in Storage paths
+function sanitizeFileName(name) {
+  return name.replace(/[^a-zA-Z0-9._\-]/g, '_');
+}
+
 window.uploadTaskFile = async function(id, input) {
   if(!input.files || !input.files[0]) return;
   const file = input.files[0];
   let t = state.tasks.find(x=>x.id===id);
   if(t) {
     try {
-      const path = `tasks/${id}/${file.name}`;
+      const path = `tasks/${id}/${sanitizeFileName(file.name)}`;
       const { error } = await sb.storage.from('mih-files').upload(path, file, { upsert: true });
       if(error) throw error;
       t.filePath = path;
@@ -839,7 +844,7 @@ window.uploadReportFile = async function(id, input) {
   let r = state.reports.find(x=>x.id===id);
   if(r) {
     try {
-      const path = `reports/${id}/${file.name}`;
+      const path = `reports/${id}/${sanitizeFileName(file.name)}`;
       const { error } = await sb.storage.from('mih-files').upload(path, file, { upsert: true });
       if(error) throw error;
       r.filePath = path;
@@ -854,7 +859,7 @@ window.uploadReportFile = async function(id, input) {
 window.downloadFile = async function(type, id) {
   let item = type==='task' ? state.tasks.find(x=>x.id===id) : state.reports.find(x=>x.id===id);
   if(!item || (!item.filePath && !item.fileData)) return alert("No file attached.");
-  // Legacy: base64 data attached before Supabase migration
+  // Legacy: base64 data attached before Supabase migration — kept for backward compatibility
   if(item.fileData && !item.filePath) {
     let a = document.createElement('a');
     a.href = item.fileData;
@@ -862,7 +867,7 @@ window.downloadFile = async function(type, id) {
     a.click();
     return;
   }
-  const { data, error } = await sb.storage.from('mih-files').createSignedUrl(item.filePath, 60);
+  const { data, error } = await sb.storage.from('mih-files').createSignedUrl(item.filePath, 300);
   if(error) return alert("Error getting download link: " + error.message);
   window.open(data.signedUrl, '_blank');
 }
