@@ -1,337 +1,676 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self';">
-<title>MIH Project Tracker V3</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  :root {
-    --mih-blue: #010066;
-    --mih-accent: #38bdf8;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-  }
-  [data-theme="dark"] {
-    --bg-main: #0f172a;
-    --panel-bg: rgba(30, 41, 59, 0.7);
-    --panel-border: rgba(255, 255, 255, 0.1);
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
-    --input-bg: rgba(0,0,0,0.3);
-    --hover-bg: rgba(255,255,255,0.05);
-  }
-  [data-theme="light"] {
-    --bg-main: #f0f4f8;
-    --panel-bg: rgba(255, 255, 255, 0.8);
-    --panel-border: rgba(0, 0, 0, 0.1);
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --input-bg: rgba(255,255,255,0.9);
-    --hover-bg: rgba(0,0,0,0.03);
-  }
-  
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-  body {
-    background-color: var(--bg-main); color: var(--text-main);
-    min-height: 100vh; padding: 2rem; font-size: 14px; transition: background-color 0.3s, color 0.3s;
-  }
-  .glass-panel {
-    background: var(--panel-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    padding: 1.5rem; margin-bottom: 1.5rem;
-  }
-  .app-container { max-width: 1200px; margin: 0 auto; }
-  
-  /* Header */
-  header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-  .logo-area { display: flex; align-items: center; gap: 1rem; }
-  .logo-img { height: 48px; border-radius: 8px; }
-  h1 { font-size: 1.5rem; font-weight: 700; color: var(--mih-blue); }
-  [data-theme="dark"] h1 { color: #818cf8; }
-  
-  .controls-bar { display: flex; align-items: center; gap: 1rem; }
-  .btn {
-    background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-main);
-    padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 13px;
-  }
-  .btn:hover { background: var(--hover-bg); }
-  .btn-primary { background: var(--mih-blue); color: #fff; border: none; font-weight: 600; }
-  .btn-primary:hover { background: #020088; }
-  [data-theme="dark"] .btn-primary { background: var(--mih-accent); color: #000; }
-  [data-theme="dark"] .btn-primary:hover { background: #0ea5e9; }
-  .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
-  .btn-sm { padding: 0.25rem 0.5rem; font-size: 11px; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self';">
+  <title>MIH Project Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --mih-blue: #010066;
+      --mih-accent: #38bdf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
 
-  /* Tabs */
-  .tabs { display: flex; gap: 0.5rem; overflow-x: auto; margin-bottom: 1.5rem; }
-  .tab-btn {
-    background: transparent; border: none; color: var(--text-muted); padding: 0.75rem 1.25rem;
-    border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap;
-  }
-  .tab-btn:hover { color: var(--text-main); }
-  .tab-btn.active { background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--panel-border); }
-  
-  .view { display: none; animation: fadeIn 0.3s ease; }
-  .view.active { display: block; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    [data-theme="dark"] {
+      --bg-main: #0f172a;
+      --panel-bg: rgba(30, 41, 59, 0.7);
+      --panel-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --input-bg: rgba(0, 0, 0, 0.3);
+      --hover-bg: rgba(255, 255, 255, 0.05);
+    }
 
-  /* Utilities */
-  .flex-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-  .flex-gap { display: flex; gap: 1rem; align-items: center; }
-  .text-muted { color: var(--text-muted); }
-  .badge { padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
-  .badge.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-  .badge.warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-  .badge.danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
-  .tag-badge { background: var(--hover-bg); border: 1px solid var(--panel-border); color: var(--text-muted); font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
-  
-  /* Tables */
-  table { width: 100%; border-collapse: collapse; text-align: left; }
-  th { padding: 1rem 0.5rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); }
-  td { padding: 1rem 0.5rem; border-bottom: 1px solid var(--panel-border); vertical-align: middle; }
-  tr:hover td { background: var(--hover-bg); }
-  
-  /* Forms */
-  input, select, textarea {
-    background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-main);
-    padding: 0.5rem; border-radius: 6px; width: 100%; font-family: inherit;
-  }
-  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--mih-accent); }
-  textarea { resize: vertical; min-height: 80px; }
-  
-  /* Modals */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 100; }
-  .modal { background: var(--panel-bg); width: 100%; max-width: 500px; padding: 2rem; border-radius: 12px; border: 1px solid var(--panel-border); max-height: 90vh; overflow-y: auto; }
-  .form-group { margin-bottom: 1rem; }
-  .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600;}
+    [data-theme="light"] {
+      --bg-main: #f0f4f8;
+      --panel-bg: rgba(255, 255, 255, 0.8);
+      --panel-border: rgba(0, 0, 0, 0.1);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --input-bg: rgba(255, 255, 255, 0.9);
+      --hover-bg: rgba(0, 0, 0, 0.03);
+    }
 
-  /* specific */
-  .overview-box { white-space: pre-wrap; line-height: 1.6; }
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
-  .kpi-val { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.2rem; }
-  
-  .att-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--panel-border); background: transparent; cursor: pointer; color: var(--text-main); }
-  .att-btn.present { background: var(--success); border-color: var(--success); color: white;}
-  .att-btn.absent { background: var(--danger); border-color: var(--danger); color: white;}
-  
-  .admin-only, .member-only { display: none; }
-  body[data-role="admin"] .admin-only { display: inline-block; }
-  body[data-role="admin"] .admin-flex { display: flex; }
-  body[data-role="member"] .member-only { display: inline-block; }
-  
-  .history-table { opacity: 0.7; }
-  
-  /* Mobile Responsiveness */
-  @media (max-width: 768px) {
-    header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-    .controls-bar { flex-wrap: wrap; }
-    .dash-grid { grid-template-columns: 1fr !important; }
-    .flex-between { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-    .flex-between .flex-gap { width: 100%; justify-content: flex-start; }
-    .glass-panel { padding: 1rem; }
-    .tabs { padding-bottom: 0.5rem; }
-    th, td { font-size: 12px; padding: 0.75rem 0.25rem; }
-  }
-</style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem;
+      font-size: 14px;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .glass-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .app-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo-img {
+      height: 48px;
+      border-radius: 8px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--mih-blue);
+    }
+
+    [data-theme="dark"] h1 {
+      color: #818cf8;
+    }
+
+    .controls-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 13px;
+    }
+
+    .btn:hover {
+      background: var(--hover-bg);
+    }
+
+    .btn-primary {
+      background: var(--mih-blue);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: #020088;
+    }
+
+    [data-theme="dark"] .btn-primary {
+      background: var(--mih-accent);
+      color: #000;
+    }
+
+    [data-theme="dark"] .btn-primary:hover {
+      background: #0ea5e9;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 11px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: var(--panel-bg);
+      color: var(--text-main);
+      border: 1px solid var(--panel-border);
+    }
+
+    .view {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Utilities */
+    .flex-between {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .flex-gap {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .text-muted {
+      color: var(--text-muted);
+    }
+
+    .badge {
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+
+    .badge.warning {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+    }
+
+    .badge.danger {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+    }
+
+    .tag-badge {
+      background: var(--hover-bg);
+      border: 1px solid var(--panel-border);
+      color: var(--text-muted);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      padding: 1rem 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    td {
+      padding: 1rem 0.5rem;
+      border-bottom: 1px solid var(--panel-border);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: var(--hover-bg);
+    }
+
+    /* Forms */
+    input,
+    select,
+    textarea {
+      background: var(--input-bg);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 0.5rem;
+      border-radius: 6px;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--mih-accent);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal {
+      background: var(--panel-bg);
+      width: 100%;
+      max-width: 500px;
+      padding: 2rem;
+      border-radius: 12px;
+      border: 1px solid var(--panel-border);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+
+    /* specific */
+    .overview-box {
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .kpi-val {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .att-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid var(--panel-border);
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-main);
+    }
+
+    .att-btn.present {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+
+    .att-btn.absent {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: white;
+    }
+
+    .admin-only,
+    .member-only {
+      display: none;
+    }
+
+    body[data-role="admin"] .admin-only {
+      display: inline-block;
+    }
+
+    body[data-role="admin"] .admin-flex {
+      display: flex;
+    }
+
+    body[data-role="member"] .member-only {
+      display: inline-block;
+    }
+
+    body[data-role="none"] .auth-required {
+      display: none !important;
+    }
+
+    body[data-role="none"] .auth-fallback {
+      display: block !important;
+    }
+
+    .auth-fallback {
+      display: none;
+    }
+
+    .history-table {
+      opacity: 0.7;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+
+      .controls-bar {
+        flex-wrap: wrap;
+      }
+
+      .dash-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .flex-between {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .flex-between .flex-gap {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .glass-panel {
+        padding: 1rem;
+      }
+
+      .tabs {
+        padding-bottom: 0.5rem;
+      }
+
+      th,
+      td {
+        font-size: 12px;
+        padding: 0.75rem 0.25rem;
+      }
+    }
+  </style>
 </head>
+
 <body data-role="none">
 
-<div class="app-container">
-  <header>
-    <div class="logo-area">
-      <img src="MIH Logo (1).png" alt="MIH Logo" class="logo-img" onerror="this.style.display='none'">
-      <div>
-        <h1>Materials Innovation Hub</h1>
-        <div style="font-size: 12px; color: var(--text-muted);">Cassava Biopolymer Project Tracker</div>
+  <div class="app-container">
+    <header>
+      <div class="logo-area">
+        <img src="MIH Logo (1).png" alt="MIH Logo" class="logo-img" onerror="this.style.display='none'">
+        <div>
+          <h1>Materials Innovation Hub</h1>
+          <div style="font-size: 12px; color: var(--text-muted);">Cassava Biopolymer Project Tracker</div>
+        </div>
       </div>
-    </div>
-    <div class="controls-bar">
-      <div id="realtime-clock" style="font-size: 12px; font-weight: 600; color: var(--mih-accent); background: var(--panel-bg); padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--panel-border);"></div>
-      <div class="badge warning" style="font-size: 11px;">⏰ Deadline: Friday 11:59 PM</div>
-      <button class="btn" onclick="toggleTheme()">🌓 Theme</button>
-      <span id="user-status" style="font-weight: 600; margin-left: 1rem;">👁 View-Only Mode</span>
-      <button class="btn btn-primary" id="login-btn" onclick="openLogin()">Local View Mode</button>
-      <button class="btn" id="logout-btn" style="display:none;" onclick="logout()">Logout</button>
-    </div>
-  </header>
+      <div class="controls-bar">
+        <div id="realtime-clock"
+          style="font-size: 12px; font-weight: 600; color: var(--mih-accent); background: var(--panel-bg); padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--panel-border);">
+        </div>
+        <div class="badge warning" style="font-size: 11px;">⏰ Deadline: Friday 11:59 PM</div>
+        <button class="btn" onclick="toggleTheme()">🌓 Theme</button>
+        <span id="user-status" style="font-weight: 600; margin-left: 1rem;">View Only</span>
+        <button class="btn btn-primary" id="login-btn" onclick="openLogin()">Login</button>
+        <button class="btn" id="logout-btn" style="display:none;" onclick="logout()">Logout</button>
+      </div>
+    </header>
 
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
-    <button class="tab-btn" onclick="switchTab('attendance')">Attendance</button>
-    <button class="tab-btn" onclick="switchTab('tasks')">Tasks</button>
-    <button class="tab-btn" onclick="switchTab('reports')">Project Reports</button>
-    <button class="tab-btn" onclick="switchTab('certs')">Certification</button>
-    <button class="tab-btn admin-only" onclick="switchTab('admin')">Admin Config</button>
-    <button class="tab-btn" id="profile-tab" style="display:none;" onclick="switchTab('profile')">My Profile</button>
-  </div>
-
-  <!-- DASHBOARD -->
-  <div id="dashboard" class="view active">
-    <div class="kpi-grid" style="margin-bottom: 1.5rem;">
-      <div class="glass-panel text-center">
-        <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Project Health</div>
-        <div class="kpi-val" id="kpi-health">0%</div>
-      </div>
-      <div class="glass-panel text-center">
-        <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Attendance</div>
-        <div class="kpi-val" id="kpi-att">0%</div>
-      </div>
-      <div class="glass-panel text-center">
-        <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Tasks Done</div>
-        <div class="kpi-val" id="kpi-tasks">0</div>
-      </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('attendance')">Attendance</button>
+      <button class="tab-btn" onclick="switchTab('tasks')">Tasks</button>
+      <button class="tab-btn" onclick="switchTab('reports')">Project Reports</button>
+      <button class="tab-btn" onclick="switchTab('certs')">Certification</button>
+      <button class="tab-btn admin-only" onclick="switchTab('admin')">Admin Config</button>
+      <button class="tab-btn" id="profile-tab" style="display:none;" onclick="switchTab('profile')">My Profile</button>
     </div>
 
-    <div class="dash-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="view active">
+      <div class="kpi-grid" style="margin-bottom: 1.5rem;">
+        <div class="glass-panel text-center">
+          <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Project Health</div>
+          <div class="kpi-val" id="kpi-health">0%</div>
+        </div>
+        <div class="glass-panel text-center">
+          <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Attendance</div>
+          <div class="kpi-val" id="kpi-att">0%</div>
+        </div>
+        <div class="glass-panel text-center">
+          <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Tasks Done</div>
+          <div class="kpi-val" id="kpi-tasks">0</div>
+        </div>
+      </div>
+
+      <div class="dash-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+        <div class="glass-panel">
+          <div class="flex-between">
+            <h3>Project Overview</h3>
+            <button class="btn btn-sm admin-only" onclick="editOverview()">Edit</button>
+          </div>
+          <div id="overview-content" class="overview-box text-muted"></div>
+        </div>
+
+        <div class="glass-panel">
+          <h3>Engagement Leaderboard</h3>
+          <div class="auth-required">
+            <table style="margin-top: 1rem;" id="leaderboard-table"></table>
+          </div>
+          <div class="auth-fallback text-muted" style="margin-top: 1rem;">Please log in to view the leaderboard.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE -->
+    <div id="attendance" class="view">
       <div class="glass-panel">
         <div class="flex-between">
-          <h3>Project Overview</h3>
-          <button class="btn btn-sm admin-only" onclick="editOverview()">Edit</button>
+          <h3>Session Attendance</h3>
+          <div class="flex-gap">
+            <button class="btn btn-primary member-only" id="btn-signin" style="display:none;"
+              onclick="memberSignIn()">Sign In to Active Session</button>
+            <button class="btn admin-only" onclick="manageSessions()">Manage Sessions</button>
+          </div>
         </div>
-        <div id="overview-content" class="overview-box text-muted"></div>
+        <div class="auth-required" style="overflow-x: auto;">
+          <table id="att-table"></table>
+        </div>
+        <div class="auth-fallback text-muted">Please log in to view attendance records.</div>
       </div>
-      
+    </div>
+
+    <!-- TASKS -->
+    <div id="tasks" class="view">
       <div class="glass-panel">
-        <h3>Engagement Leaderboard</h3>
-        <table style="margin-top: 1rem;" id="leaderboard-table"></table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ATTENDANCE -->
-  <div id="attendance" class="view">
-    <div class="glass-panel">
-      <div class="flex-between">
-        <h3>Session Attendance</h3>
-        <div class="flex-gap">
-          <button class="btn btn-primary member-only" id="btn-signin" style="display:none;" onclick="memberSignIn()">Sign In to Active Session</button>
-          <button class="btn admin-only" onclick="manageSessions()">Manage Sessions</button>
+        <div class="flex-between">
+          <h3>Current Tasks</h3>
+          <button class="btn btn-primary admin-only" onclick="openTaskModal()">+ Add Task</button>
+        </div>
+        <div style="overflow-x: auto;">
+          <table id="tasks-current"></table>
         </div>
       </div>
-      <div style="overflow-x: auto;">
-        <table id="att-table"></table>
-      </div>
-    </div>
-  </div>
-
-  <!-- TASKS -->
-  <div id="tasks" class="view">
-    <div class="glass-panel">
-      <div class="flex-between">
-        <h3>Current Tasks</h3>
-        <button class="btn btn-primary admin-only" onclick="openTaskModal()">+ Add Task</button>
-      </div>
-      <div style="overflow-x: auto;"><table id="tasks-current"></table></div>
-    </div>
-    <div class="glass-panel">
-      <h3>Task History (Completed)</h3>
-      <div style="overflow-x: auto;"><table id="tasks-history" class="history-table"></table></div>
-    </div>
-  </div>
-
-  <!-- REPORTS -->
-  <div id="reports" class="view">
-    <div class="glass-panel">
-      <div class="flex-between">
-        <h3>Master Project Reports</h3>
-        <span class="text-muted" style="font-size: 12px;">Only Word Documents allowed. Editable by Admin or contributors.</span>
-      </div>
-      <div style="overflow-x: auto;"><table id="reports-table"></table></div>
-    </div>
-  </div>
-
-  <!-- CERTIFICATION -->
-  <div id="certs" class="view">
-    <div class="glass-panel">
-      <div class="flex-between">
-        <h3>Certification Eligibility</h3>
-        <div class="admin-only flex-gap">
-          <button class="btn" onclick="openMemberModal()">+ Add Member</button>
-          <button class="btn" onclick="exportJSON()">Export</button>
+      <div class="glass-panel">
+        <h3>Task History (Completed)</h3>
+        <div style="overflow-x: auto;">
+          <table id="tasks-history" class="history-table"></table>
         </div>
       </div>
-      <p class="text-muted" style="margin-bottom: 1rem; font-size: 12px;">Requirement: Each metric must be \u2265 90% (Attendance \u2265 90%, Tasks \u2265 90%, Reports \u2265 90%)</p>
-      <div style="overflow-x: auto;"><table id="certs-table"></table></div>
     </div>
-  </div>
 
-  <!-- ADMIN CONFIG -->
-  <div id="admin" class="view">
-    <div class="glass-panel">
-      <div class="flex-between">
-        <h3>Manage Project Phases</h3>
-        <button class="btn btn-primary" onclick="addPhase()">+ Add Phase</button>
+    <!-- REPORTS -->
+    <div id="reports" class="view">
+      <div class="glass-panel">
+        <div class="flex-between">
+          <h3>Master Project Reports</h3>
+          <span class="text-muted" style="font-size: 12px;">Only Word Documents allowed. Editable by Admin or
+            contributors.</span>
+        </div>
+        <div style="overflow-x: auto;">
+          <table id="reports-table"></table>
+        </div>
       </div>
-      <p class="text-muted" style="margin-bottom: 1rem; font-size: 12px;">Locked phases prevent members from editing task submissions within that phase.</p>
-      <table id="phases-table"></table>
     </div>
-    <div class="glass-panel">
-      <div class="flex-between">
-        <h3>Deadline Notifications</h3>
-        <button class="btn btn-primary" onclick="sendDeadlineEmail()">Send Reminder Email</button>
+
+    <!-- CERTIFICATION -->
+    <div id="certs" class="view">
+      <div class="glass-panel">
+        <div class="flex-between">
+          <h3>Certification Eligibility</h3>
+          <div class="admin-only flex-gap">
+            <button class="btn" onclick="openMemberModal()">+ Add Member</button>
+            <button class="btn" onclick="exportJSON()">Export</button>
+          </div>
+        </div>
+        <p class="text-muted" style="margin-bottom: 1rem; font-size: 12px;">Requirement: Each metric must be \u2265 90%
+          (Attendance \u2265 90%, Tasks \u2265 90%, Reports \u2265 90%)</p>
+        <div class="auth-required" style="overflow-x: auto;">
+          <table id="certs-table"></table>
+        </div>
+        <div class="auth-fallback text-muted">Please log in to view certification eligibility.</div>
       </div>
-      <p class="text-muted" style="font-size: 12px;">Sends an email (BCC to all members) reminding them of the Friday 11:59 PM deadline. (Should be clicked 8:00 AM Fridays).</p>
     </div>
-    <div class="glass-panel">
-      <div class="flex-between">
-        <h3>Member Edit Requests</h3>
-        <button class="btn btn-primary" onclick="viewEditRequests()">Review Requests</button>
+
+    <!-- ADMIN CONFIG -->
+    <div id="admin" class="view">
+      <div class="glass-panel">
+        <div class="flex-between">
+          <h3>Manage Project Phases</h3>
+          <button class="btn btn-primary" onclick="addPhase()">+ Add Phase</button>
+        </div>
+        <p class="text-muted" style="margin-bottom: 1rem; font-size: 12px;">Locked phases prevent members from editing
+          task submissions within that phase.</p>
+        <table id="phases-table"></table>
       </div>
-      <p class="text-muted" style="font-size: 12px;">When members request task description changes, they appear here for your approval.</p>
+      <div class="glass-panel">
+        <div class="flex-between">
+          <h3>Deadline Notifications</h3>
+          <button class="btn btn-primary" onclick="sendDeadlineEmail()">Send Reminder Email</button>
+        </div>
+        <p class="text-muted" style="font-size: 12px;">Sends an email (BCC to all members) reminding them of the Friday
+          11:59 PM deadline. (Should be clicked 8:00 AM Fridays).</p>
+      </div>
+      <div class="glass-panel">
+        <div class="flex-between">
+          <h3>Member Edit Requests</h3>
+          <button class="btn btn-primary" onclick="viewEditRequests()">Review Requests</button>
+        </div>
+        <p class="text-muted" style="font-size: 12px;">When members request task description changes, they appear here
+          for your approval.</p>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div id="profile" class="view">
+      <div class="glass-panel" style="max-width: 400px; margin: 0 auto;">
+        <h3>Change Password</h3>
+        <div class="form-group" style="margin-top: 1rem;">
+          <label>New Password</label>
+          <input type="password" id="prof-pwd">
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="savePassword()">Update Password</button>
+      </div>
     </div>
   </div>
 
-  <!-- PROFILE -->
-  <div id="profile" class="view">
-    <div class="glass-panel" style="max-width: 400px; margin: 0 auto;">
-      <h3>Local View Mode</h3>
-      <p class="text-muted" style="margin-top: 1rem; font-size: 13px; line-height: 1.6;">
-        Currently viewing as: <strong id="prof-role-display"></strong><br>
-        This is a <em>local-only</em> view mode — protected by a PIN but not a server-side authentication system.
-      </p>
-      <div id="admin-profile-section"></div>
-      <button class="btn" style="margin-top: 1rem; width: 100%;" onclick="logout()">Exit to View-Only Mode</button>
+  <!-- Dynamic Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h3 id="m-title">Title</h3>
+      <div id="m-body"></div>
+      <div class="flex-gap" style="justify-content: flex-end; margin-top: 1.5rem;">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="m-save">Save</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Dynamic Modal -->
-<div class="modal-overlay" id="modal">
-  <div class="modal">
-    <h3 id="m-title">Title</h3>
-    <div id="m-body"></div>
-    <div class="flex-gap" style="justify-content: flex-end; margin-top: 1.5rem;">
-      <button class="btn" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="m-save">Save</button>
+  <div id="loading-overlay"
+    style="position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:1rem;">
+    <div
+      style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top-color:#38bdf8;border-radius:50%;animation:spin 0.8s linear infinite;">
     </div>
+    <span style="color:#fff;font-family:Inter,sans-serif;font-weight:600;">Connecting to cloud...</span>
   </div>
-</div>
+  <style>
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+  </style>
 
-<script>
-// ============================================================
-// SUPABASE CONFIGURATION
-// 1. Go to https://supabase.com/dashboard and create a project.
-// 2. Under Settings → API, copy your Project URL and anon/public key.
-// 3. Paste them below.
-// 4. Run the SQL in supabase-setup.sql in the Supabase SQL Editor.
-// 5. In Storage, create a private bucket named exactly: mih-files
-// ============================================================
-const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_PUBLIC_KEY';
+  <script>
+    // --- Supabase Setup ---
+    const SUPABASE_URL = 'https://grvbyxkilrobyrbsqqqr.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydmJ5eGtpbHJvYnlyYnNxcXFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODYzNzIsImV4cCI6MjA5MzA2MjM3Mn0.LT_bydOKCEAgyfUnFq0Wz1lSzEIxNhHaI-JHkkGH4WA';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-if (SUPABASE_URL.includes('YOUR_PROJECT_ID')) {
-  console.warn('[MIH] Supabase not configured. Open index.html and set SUPABASE_URL and SUPABASE_ANON_KEY, then run supabase-setup.sql.');
-}
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let state = {
-  v: 3.5,
-  theme: 'dark',
-  overview: `Cassava Biopolymer Project
+    let state = {
+      v: 3.4,
+      theme: 'dark',
+      pin: '1509442', // Hashed default PIN (1234)
+      overview: `Cassava Biopolymer Project
 Materials Innovation Hub \u2013 Club Activity Plan
 
 Project Overview
@@ -370,611 +709,552 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
 4:05\u20134:20 \u2013 Team briefs, 2 min each (15 min)
 4:20\u20135:55 \u2013 Building: teams work independently (95 min)
 5:55\u20136:00 \u2013 Debrief & next week focus (5 min)`,
-  phases: [
-    { id: 'ph1', name: 'Phase 1: Research', locked: false },
-    { id: 'ph2', name: 'Phase 2: Synthesis', locked: false }
-  ],
-  members: [],
-  sessions: [
-    { id: 's1', label: 'Wk 1', active: true }
-  ],
-  attendance: {},
-  tasks: [],
-  reports: [
-    { id: 'r1', type: 'Introduction', fileData: null, fileName: '', status: 'pending' },
-    { id: 'r2', type: 'Literature Review', fileData: null, fileName: '', status: 'pending' },
-    { id: 'r3', type: 'Methodology', fileData: null, fileName: '', status: 'pending' },
-    { id: 'r4', type: 'Results', fileData: null, fileName: '', status: 'pending' }
-  ],
-  editRequests: []
-};
+      phases: [
+        { id: 'ph1', name: 'Phase 1: Research', locked: false },
+        { id: 'ph2', name: 'Phase 2: Synthesis', locked: false }
+      ],
+      members: [],
+      sessions: [
+        { id: 's1', label: 'Wk 1', active: true }
+      ],
+      attendance: {},
+      tasks: [],
+      reports: [
+        { id: 'r1', type: 'Introduction', fileData: null, fileName: '', status: 'pending' },
+        { id: 'r2', type: 'Literature Review', fileData: null, fileName: '', status: 'pending' },
+        { id: 'r3', type: 'Methodology', fileData: null, fileName: '', status: 'pending' },
+        { id: 'r4', type: 'Results', fileData: null, fileName: '', status: 'pending' }
+      ],
+      editRequests: []
+    };
 
-let currentUser = { role: 'none', id: null }; // roles: none, admin, member
+    let currentUser = { role: 'none', id: null }; // roles: none, admin, member
 
-async function init() {
-  try {
-    const { data, error } = await sb.from('app_state').select('state').eq('id', 'main').single();
-    if (data && data.state) {
-      let parsed = data.state;
-      delete parsed.pin;
-      if (Array.isArray(parsed.members)) parsed.members.forEach(m => delete m.pwd);
-      state = Object.assign(state, parsed);
-    }
-  } catch(e) {
-    console.warn('[MIH] Could not load state from Supabase, using defaults:', e.message);
-  }
-  // Always strip any leftover credentials
-  delete state.pin;
-  if (Array.isArray(state.members)) state.members.forEach(m => delete m.pwd);
-  document.documentElement.setAttribute('data-theme', state.theme);
-  applyRole(); renderAll();
-}
+    async function init() {
+      // Show loading
+      const overlay = document.getElementById('loading-overlay');
 
-function saveState() {
-  // Deep-copy and strip legacy base64 blobs — files live in Supabase Storage now
-  let saveData = JSON.parse(JSON.stringify(state));
-  if (Array.isArray(saveData.tasks)) saveData.tasks.forEach(t => delete t.fileData);
-  if (Array.isArray(saveData.reports)) saveData.reports.forEach(r => delete r.fileData);
-  sb.from('app_state')
-    .upsert({ id: 'main', state: saveData, updated_at: new Date().toISOString() })
-    .then(({ error }) => { if (error) console.error('[MIH] Supabase save error:', error); });
-  renderAll();
-}
-
-function toggleTheme() {
-  state.theme = state.theme === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', state.theme);
-  saveState();
-}
-
-// --- HTML Escape Helper ---
-function esc(s) {
-  if (s == null) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-// --- SHA-256 Helper (WebCrypto) ---
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// --- Format Helper ---
-function formatName(m) {
-  if(!m) return '';
-  return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
-}
-
-// --- Modals & Auth ---
-function openModal(title, html, onSave) {
-  document.getElementById('m-title').textContent = title;
-  document.getElementById('m-body').innerHTML = html;
-  document.getElementById('modal').style.display = 'flex';
-  document.getElementById('m-save').onclick = async () => { if (await onSave() !== false) closeModal(); };
-}
-function closeModal() { document.getElementById('modal').style.display = 'none'; }
-
-function openLogin() {
-  let adminPinSet = !!localStorage.getItem('mih_admin_pin');
-  let memberOptions = state.members.length
-    ? state.members.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')
-    : '<option value="">No members configured yet</option>';
-
-  let adminSection = adminPinSet
-    ? `<p class="text-muted" style="font-size:12px; margin-top:0.75rem;">Admin view grants full local control over all data. Use on trusted devices only.</p>
-       <div class="form-group" style="margin-top:0.75rem;"><label>Admin PIN</label><input type="password" id="log-apin" placeholder="Enter admin PIN" autocomplete="current-password"></div>`
-    : `<p class="text-muted" style="font-size:12px; margin-top:0.75rem;">No admin PIN is set. Create one now to secure this device.</p>
-       <div class="form-group" style="margin-top:0.75rem;"><label>New Admin PIN</label><input type="password" id="log-apin" placeholder="Choose a PIN" autocomplete="new-password"></div>
-       <div class="form-group"><label>Confirm PIN</label><input type="password" id="log-apin2" placeholder="Confirm PIN" autocomplete="new-password"></div>
-       <p class="text-muted" style="font-size:11px; margin-top:0.25rem;">⚠️ Store this PIN safely. If forgotten, you must clear browser storage to reset access.</p>`;
-
-  let firstMember = state.members[0];
-  let firstHasPin = !!(firstMember && firstMember.pinHash);
-
-  let html = `
-    <p class="text-muted" style="margin-bottom:1rem; font-size:12px; padding:0.6rem 0.75rem; background:rgba(245,158,11,0.1); border-radius:6px; border:1px solid rgba(245,158,11,0.3); line-height:1.5;">
-      ⚠️ <b>Protected by a local PIN</b> — not a server-side authentication system.
-    </p>
-    <div class="tabs"><button class="tab-btn active" id="btn-log-m" onclick="togLog('m')">Member View</button><button class="tab-btn" id="btn-log-a" onclick="togLog('a')">Admin View</button></div>
-    <div id="log-m-box">
-      <div class="form-group" style="margin-top:0.75rem;"><label>Select Your Name</label><select id="log-msel" onchange="togMPin()">${memberOptions}</select></div>
-      <div id="log-mpin-group" style="display:${firstHasPin ? 'block' : 'none'}">
-        <div class="form-group"><label>Member PIN</label><input type="password" id="log-mpin" placeholder="Enter your PIN" autocomplete="current-password"></div>
-      </div>
-    </div>
-    <div id="log-a-box" style="display:none">
-      ${adminSection}
-    </div>
-  `;
-  window.togLog = (t) => {
-    document.getElementById('btn-log-m').classList.toggle('active', t==='m');
-    document.getElementById('btn-log-a').classList.toggle('active', t==='a');
-    document.getElementById('log-m-box').style.display = t==='m'?'block':'none';
-    document.getElementById('log-a-box').style.display = t==='a'?'block':'none';
-  };
-  window.togMPin = () => {
-    let sel = document.getElementById('log-msel');
-    if (!sel) return;
-    let member = state.members.find(m => m.id === sel.value);
-    let group = document.getElementById('log-mpin-group');
-    if (group) group.style.display = (member && member.pinHash) ? 'block' : 'none';
-    let pinInput = document.getElementById('log-mpin');
-    if (pinInput) pinInput.value = '';
-  };
-  openModal('Enter Local View Mode', html, async () => {
-    if (document.getElementById('btn-log-a').classList.contains('active')) {
-      let pin = document.getElementById('log-apin').value;
-      if (!pin) { alert('Enter a PIN'); return false; }
-      if (!adminPinSet) {
-        let pin2 = document.getElementById('log-apin2').value;
-        if (pin !== pin2) { alert('PINs do not match'); return false; }
-        localStorage.setItem('mih_admin_pin', await sha256(pin));
-      } else {
-        if (await sha256(pin) !== localStorage.getItem('mih_admin_pin')) {
-          alert('Incorrect admin PIN'); return false;
+      try {
+        // Try to load from Supabase
+        const { data, error } = await sb.from('project_state').select('data').eq('id', 1).single();
+        if (!error && data && data.data && Object.keys(data.data).length > 0) {
+          let parsed = data.data;
+          if (parsed.pin && parsed.pin.length <= 4) parsed.pin = hashStr(parsed.pin);
+          state = Object.assign(state, parsed);
+        } else {
+          // Fallback: try localStorage migration
+          let saved = localStorage.getItem('mih_v3');
+          if (saved) {
+            let parsed = JSON.parse(saved);
+            if (parsed.pin && parsed.pin.length <= 4) parsed.pin = hashStr(parsed.pin);
+            state = Object.assign(state, parsed);
+            // Migrate to Supabase silently
+            await sb.from('project_state').upsert({ id: 1, data: state });
+            localStorage.removeItem('mih_v3');
+          }
+        }
+      } catch (e) {
+        // Supabase unreachable - fall back to localStorage
+        let saved = localStorage.getItem('mih_v3');
+        if (saved) {
+          let parsed = JSON.parse(saved);
+          if (parsed.pin && parsed.pin.length <= 4) parsed.pin = hashStr(parsed.pin);
+          state = Object.assign(state, parsed);
         }
       }
-      currentUser = { role: 'admin', id: null };
-    } else {
-      let sel = document.getElementById('log-msel');
-      if (!sel || !sel.value) { alert('Select a member'); return false; }
-      let member = state.members.find(m => m.id === sel.value);
-      if (member && member.pinHash) {
-        let pin = document.getElementById('log-mpin')?.value || '';
-        if (!pin) { alert('This member requires a PIN'); return false; }
-        if (await sha256(pin) !== member.pinHash) { alert('Incorrect member PIN'); return false; }
-      }
-      currentUser = { role: 'member', id: sel.value };
+
+      overlay.style.display = 'none';
+      document.documentElement.setAttribute('data-theme', state.theme);
+      applyRole(); renderAll();
     }
-    applyRole();
-  });
-}
 
-function applyRole() {
-  document.body.setAttribute('data-role', currentUser.role);
-  let s = '👁 View-Only Mode';
-  if (currentUser.role === 'admin') s = '👑 Admin (Local)';
-  else if (currentUser.role === 'member') {
-    let m = state.members.find(x => x.id === currentUser.id);
-    s = `👤 ${m ? m.name : ''}`;
-  }
-  document.getElementById('user-status').textContent = s;
-  let profDisp = document.getElementById('prof-role-display');
-  if (profDisp) profDisp.textContent = s;
-  document.getElementById('login-btn').style.display = currentUser.role==='none' ? 'inline-block' : 'none';
-  document.getElementById('logout-btn').style.display = currentUser.role!=='none' ? 'inline-block' : 'none';
-  document.getElementById('profile-tab').style.display = currentUser.role!=='none' ? 'inline-block' : 'none';
+    async function saveState() {
+      try {
+        await sb.from('project_state').upsert({ id: 1, data: state, updated_at: new Date().toISOString() });
+      } catch (e) {
+        localStorage.setItem('mih_v3', JSON.stringify(state));
+      }
+      renderAll();
+    }
 
-  let adminProfileSec = document.getElementById('admin-profile-section');
-  if (adminProfileSec) {
-    adminProfileSec.innerHTML = currentUser.role === 'admin'
-      ? `<button class="btn" style="margin-top:1rem;width:100%;" onclick="changeAdminPin()">🔑 Change Admin PIN</button>
-         <p class="text-muted" style="font-size:11px;margin-top:0.5rem;">⚠️ If the admin PIN is forgotten, clear browser storage to reset access.</p>`
-      : '';
-  }
+    function toggleTheme() {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', state.theme);
+      saveState();
+    }
 
-  if (currentUser.role === 'none') switchTab('dashboard');
-  renderAll();
-}
-function logout() { currentUser = { role: 'none', id: null }; applyRole(); }
+    // --- Security (Basic Obfuscation) ---
+    function hashStr(s) {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+      return h.toString();
+    }
 
-// --- Logic ---
-function getAttRate(mid) {
-  if(!state.sessions.length) return 0;
-  let p = state.sessions.filter(s => state.attendance[mid]?.[s.id]==='present').length;
-  return Math.round((p/state.sessions.length)*100);
-}
-function getTaskRate(mid) {
-  let ts = state.tasks.filter(t => t.mids.includes(mid));
-  if(!ts.length) return 100;
-  return Math.round((ts.filter(t=>t.status==='done').length/ts.length)*100);
-}
-function getRepRate() {
-  if(!state.reports.length) return 100;
-  return Math.round((state.reports.filter(r=>r.status==='done').length/state.reports.length)*100);
-}
-function getEngagement(mid) { return Math.round((getAttRate(mid)*0.4)+(getTaskRate(mid)*0.35)+(getRepRate()*0.25)); }
-function isCertEligible(mid) { return getAttRate(mid) >= 90 && getTaskRate(mid) >= 90 && getRepRate() >= 90; }
+    // --- HTML Escape Helper ---
+    function esc(s) {
+      if (s == null) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
-// --- Renders ---
-function switchTab(t) {
-  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  document.getElementById(t).classList.add('active');
-  document.querySelector(`.tab-btn[onclick="switchTab('${t}')"]`).classList.add('active');
-}
+    // --- Format Helper ---
+    function formatName(m) {
+      if (!m) return '';
+      return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
+    }
 
-function renderAll() {
-  document.getElementById('overview-content').textContent = state.overview;
-  
-  // KPI
-  let tA=0, tE=0, c=0, tD=state.tasks.filter(t=>t.status==='done').length;
-  state.members.forEach(m => {
-    let e = getEngagement(m.id); tA += getAttRate(m.id); tE += e;
-    if(isCertEligible(m.id)) c++;
-  });
-  document.getElementById('kpi-att').textContent = state.members.length ? `${Math.round(tA/state.members.length)}%` : '0%';
-  document.getElementById('kpi-health').textContent = state.members.length ? `${Math.round(tE/state.members.length)}%` : '0%';
-  document.getElementById('kpi-tasks').textContent = tD;
-  
-  // Leaderboard
-  let lb = [...state.members].sort((a,b)=>getEngagement(b.id)-getEngagement(a.id)).slice(0,5);
-  document.getElementById('leaderboard-table').innerHTML = lb.map((m,i)=>`<tr><td style="width:30px">#${i+1}</td><td>${formatName(m)}</td><td style="text-align:right; font-weight:600">${getEngagement(m.id)}%</td></tr>`).join('');
+    // --- Modals & Auth ---
+    function openModal(title, html, onSave) {
+      document.getElementById('m-title').textContent = title;
+      document.getElementById('m-body').innerHTML = html;
+      document.getElementById('modal').style.display = 'flex';
+      document.getElementById('m-save').onclick = () => { if (onSave() !== false) closeModal(); };
+    }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
-  // Attendance
-  let actSess = state.sessions.find(s=>s.active);
-  document.getElementById('btn-signin').style.display = (currentUser.role==='member' && actSess) ? 'inline-block' : 'none';
-  
-  let aH = `<tr><th>Member</th>${state.sessions.map(s=>`<th>${esc(s.label)}${s.active?' <span style="color:var(--success)">●</span>':''}</th>`).join('')}<th>Rate</th></tr>`;
-  state.members.forEach(m => {
-    aH += `<tr><td>${formatName(m)}</td>`;
-    state.sessions.forEach(s => {
-      let st = state.attendance[m.id]?.[s.id] || 'none';
-      let dis = currentUser.role==='admin' ? '' : 'disabled';
-      aH += `<td><button class="att-btn ${esc(st)}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st==='present'?'✓':st==='absent'?'✕':''}</button></td>`;
-    });
-    aH += `<td>${getAttRate(m.id)}%</td></tr>`;
-  });
-  document.getElementById('att-table').innerHTML = aH;
+    function openLogin() {
+      let html = `
+    <div class="tabs"><button class="tab-btn active" id="btn-log-m" onclick="togLog('m')">Member</button><button class="tab-btn" id="btn-log-a" onclick="togLog('a')">President</button></div>
+    <div id="log-m-box">
+      <div class="form-group"><label>Name or Email</label><input type="text" id="log-memail" placeholder="Name or member@example.com"></div>
+      <div class="form-group"><label>Password (Default: 000)</label><input type="password" id="log-mpwd"></div>
+    </div>
+    <div id="log-a-box" style="display:none">
+      <div class="form-group"><label>Admin PIN</label><input type="password" id="log-apin"></div>
+    </div>
+  `;
+      window.togLog = (t) => {
+        document.getElementById('btn-log-m').classList.toggle('active', t === 'm');
+        document.getElementById('btn-log-a').classList.toggle('active', t === 'a');
+        document.getElementById('log-m-box').style.display = t === 'm' ? 'block' : 'none';
+        document.getElementById('log-a-box').style.display = t === 'a' ? 'block' : 'none';
+      };
+      openModal('Login', html, () => {
+        if (document.getElementById('btn-log-a').classList.contains('active')) {
+          if (hashStr(document.getElementById('log-apin').value) === state.pin) { currentUser = { role: 'admin', id: null }; }
+          else { alert('Wrong PIN'); return false; }
+        } else {
+          let inputVal = document.getElementById('log-memail').value.trim().toLowerCase();
+          let pwd = document.getElementById('log-mpwd').value;
+          let m = state.members.find(x => (x.email && x.email.toLowerCase() === inputVal) || (x.name && x.name.toLowerCase() === inputVal));
+          if (m && m.pwd === pwd) { currentUser = { role: 'member', id: m.id }; }
+          else { alert('Wrong Email or Password'); return false; }
+        }
+        applyRole();
+      });
+    }
 
-  // Tasks
-  let renderT = (list, tblId) => {
-    let h = `<tr><th>Task</th><th>Assignees</th><th>Phase</th><th>Submission</th><th>Status</th><th class="admin-only">Act</th></tr>`;
-    list.forEach(t => {
-      let ph = state.phases.find(x=>x.id===t.phaseId) || {};
-      let isAssigned = t.mids.includes(currentUser.id);
-      let canEdit = currentUser.role==='admin' || (currentUser.role==='member' && isAssigned && !ph.locked);
-      
-      let mN = t.mids.map(id => {
-        let member = state.members.find(x=>x.id===id);
-        return member ? formatName(member) : '';
-      }).filter(Boolean).join(', ');
-      
-      let opts = ['pending','in progress','done'].map(o=>`<option ${t.status===o?'selected':''}>${o}</option>`).join('');
-      
-      let fileInfo = t.fileName ? `<a href="#" onclick="downloadFile('task','${esc(t.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
-      h += `<tr>
+    function applyRole() {
+      document.body.setAttribute('data-role', currentUser.role);
+      let s = 'View Only';
+      if (currentUser.role === 'admin') s = '👑 Admin';
+      else if (currentUser.role === 'member') {
+        let m = state.members.find(x => x.id === currentUser.id);
+        s = `👤 ${m ? m.name : ''}`;
+      }
+      document.getElementById('user-status').textContent = s;
+      document.getElementById('login-btn').style.display = currentUser.role === 'none' ? 'inline-block' : 'none';
+      document.getElementById('logout-btn').style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
+      document.getElementById('profile-tab').style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
+
+      if (currentUser.role === 'none') switchTab('dashboard');
+      renderAll();
+    }
+    function logout() { currentUser = { role: 'none', id: null }; applyRole(); }
+    function savePassword() {
+      let np = document.getElementById('prof-pwd').value;
+      if (!np) return alert("Enter password");
+      if (currentUser.role === 'admin') state.pin = hashStr(np);
+      else { let m = state.members.find(x => x.id === currentUser.id); if (m) m.pwd = np; }
+      alert("Password updated!"); document.getElementById('prof-pwd').value = ''; saveState();
+    }
+
+    // --- Logic ---
+    function getAttRate(mid) {
+      if (!state.sessions.length) return 0;
+      let p = state.sessions.filter(s => state.attendance[mid]?.[s.id] === 'present').length;
+      return Math.round((p / state.sessions.length) * 100);
+    }
+    function getTaskRate(mid) {
+      let ts = state.tasks.filter(t => t.mids.includes(mid));
+      if (!ts.length) return 100;
+      return Math.round((ts.filter(t => t.status === 'done').length / ts.length) * 100);
+    }
+    function getRepRate() {
+      if (!state.reports.length) return 100;
+      return Math.round((state.reports.filter(r => r.status === 'done').length / state.reports.length) * 100);
+    }
+    function getEngagement(mid) { return Math.round((getAttRate(mid) * 0.4) + (getTaskRate(mid) * 0.35) + (getRepRate() * 0.25)); }
+    function isCertEligible(mid) { return getAttRate(mid) >= 90 && getTaskRate(mid) >= 90 && getRepRate() >= 90; }
+
+    // --- Renders ---
+    function switchTab(t) {
+      document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(t).classList.add('active');
+      document.querySelector(`.tab-btn[onclick="switchTab('${t}')"]`).classList.add('active');
+    }
+
+    function renderAll() {
+      document.getElementById('overview-content').textContent = state.overview;
+
+      // KPI
+      let tA = 0, tE = 0, c = 0, tD = state.tasks.filter(t => t.status === 'done').length;
+      state.members.forEach(m => {
+        let e = getEngagement(m.id); tA += getAttRate(m.id); tE += e;
+        if (isCertEligible(m.id)) c++;
+      });
+      document.getElementById('kpi-att').textContent = state.members.length ? `${Math.round(tA / state.members.length)}%` : '0%';
+      document.getElementById('kpi-health').textContent = state.members.length ? `${Math.round(tE / state.members.length)}%` : '0%';
+      document.getElementById('kpi-tasks').textContent = tD;
+
+      // Leaderboard
+      let lb = [...state.members].sort((a, b) => getEngagement(b.id) - getEngagement(a.id)).slice(0, 5);
+      document.getElementById('leaderboard-table').innerHTML = lb.map((m, i) => `<tr><td style="width:30px">#${i + 1}</td><td>${formatName(m)}</td><td style="text-align:right; font-weight:600">${getEngagement(m.id)}%</td></tr>`).join('');
+
+      let viewableMembers = currentUser.role === 'admin' ? state.members : state.members.filter(m => m.id === currentUser.id);
+
+      // Attendance
+      let actSess = state.sessions.find(s => s.active);
+      document.getElementById('btn-signin').style.display = (currentUser.role === 'member' && actSess) ? 'inline-block' : 'none';
+
+      let aH = `<tr><th>Member</th>${state.sessions.map(s => `<th>${esc(s.label)}${s.active ? ' <span style="color:var(--success)">●</span>' : ''}</th>`).join('')}<th>Rate</th></tr>`;
+      viewableMembers.forEach(m => {
+        aH += `<tr><td>${formatName(m)}</td>`;
+        state.sessions.forEach(s => {
+          let st = state.attendance[m.id]?.[s.id] || 'none';
+          let dis = currentUser.role === 'admin' ? '' : 'disabled';
+          aH += `<td><button class="att-btn ${esc(st)}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st === 'present' ? '✓' : st === 'absent' ? '✕' : ''}</button></td>`;
+        });
+        aH += `<td>${getAttRate(m.id)}%</td></tr>`;
+      });
+      document.getElementById('att-table').innerHTML = aH;
+
+      // Tasks
+      let renderT = (list, tblId) => {
+        let h = `<tr><th>Task</th><th>Assignees</th><th>Phase</th><th>Submission</th><th>Status</th><th class="admin-only">Act</th></tr>`;
+        list.forEach(t => {
+          let ph = state.phases.find(x => x.id === t.phaseId) || {};
+          let isAssigned = t.mids.includes(currentUser.id);
+          let canEdit = currentUser.role === 'admin' || (currentUser.role === 'member' && isAssigned && !ph.locked);
+
+          let mN = t.mids.map(id => {
+            let member = state.members.find(x => x.id === id);
+            return member ? formatName(member) : '';
+          }).filter(Boolean).join(', ');
+
+          let opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
+
+          let fileInfo = t.fileName ? `<a href="#" onclick="downloadFile('task','${esc(t.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+          h += `<tr>
         <td><div style="font-weight:600; margin-bottom:4px">${esc(t.desc)}</div></td>
         <td><span class="text-muted" style="font-size:12px">${mN || 'None'}</span></td>
-        <td><span class="badge">${esc(ph.name||'?')}</span> ${ph.locked?'🔒':''}</td>
+        <td><span class="badge">${esc(ph.name || '?')}</span> ${ph.locked ? '🔒' : ''}</td>
         <td>
           ${fileInfo}<br>
           ${canEdit ? `<input type="file" accept=".pdf,.doc,.docx" onchange="uploadTaskFile('${esc(t.id)}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}
-          <input type="text" placeholder="References (Required)" value="${esc(t.refs)}" onchange="updT('${esc(t.id)}','refs',this.value)" ${!canEdit?'disabled':''} style="font-size:12px; padding:0.25rem; margin-top:4px">
+          <input type="text" placeholder="References (Required)" value="${esc(t.refs)}" onchange="updT('${esc(t.id)}','refs',this.value)" ${!canEdit ? 'disabled' : ''} style="font-size:12px; padding:0.25rem; margin-top:4px">
         </td>
-        <td><select onchange="updT('${esc(t.id)}','status',this.value)" ${!canEdit?'disabled':''}>${opts}</select></td>
+        <td><select onchange="updT('${esc(t.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
         <td class="admin-only"><button class="btn btn-sm" onclick="openTaskModal('${esc(t.id)}')">✎</button></td>
       </tr>`;
-    });
-    document.getElementById(tblId).innerHTML = h;
-  };
-  renderT(state.tasks.filter(t=>t.status!=='done'), 'tasks-current');
-  renderT(state.tasks.filter(t=>t.status==='done'), 'tasks-history');
+        });
+        document.getElementById(tblId).innerHTML = h;
+      };
+      renderT(state.tasks.filter(t => t.status !== 'done'), 'tasks-current');
+      renderT(state.tasks.filter(t => t.status === 'done'), 'tasks-history');
 
-  // Reports
-  let rH = `<tr><th>Report Type</th><th>Document Upload (Word only)</th><th>Status</th></tr>`;
-  state.reports.forEach(r => {
-    let canEdit = currentUser.role==='admin' || currentUser.role==='member';
-    let opts = ['pending','in progress','done'].map(o=>`<option ${r.status===o?'selected':''}>${o}</option>`).join('');
-    let rFileInfo = r.fileName ? `<a href="#" onclick="downloadFile('report','${esc(r.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
-    rH += `<tr>
+      // Reports
+      let rH = `<tr><th>Report Type</th><th>Document Upload (Word only)</th><th>Status</th></tr>`;
+      state.reports.forEach(r => {
+        let canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
+        let opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
+        let rFileInfo = r.fileName ? `<a href="#" onclick="downloadFile('report','${esc(r.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+        rH += `<tr>
       <td style="font-weight:600">${esc(r.type)}</td>
       <td>${rFileInfo}<br>${canEdit ? `<input type="file" accept=".doc,.docx" onchange="uploadReportFile('${esc(r.id)}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}</td>
-      <td><select onchange="updR('${esc(r.id)}','status',this.value)" ${!canEdit?'disabled':''}>${opts}</select></td>
+      <td><select onchange="updR('${esc(r.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
     </tr>`;
-  });
-  document.getElementById('reports-table').innerHTML = rH;
+      });
+      document.getElementById('reports-table').innerHTML = rH;
 
-  // Certs
-  let cH = `<tr><th>Member</th><th>Att %</th><th>Task %</th><th>Rep %</th><th>Total Eng</th><th>Eligibility</th><th class="admin-only">Act</th></tr>`;
-  state.members.forEach(m => {
-    let e = getEngagement(m.id);
-    let eligible = isCertEligible(m.id);
-    let aR=getAttRate(m.id), tR=getTaskRate(m.id), rpR=getRepRate();
-    cH += `<tr>
+      // Certs
+      let cH = `<tr><th>Member</th><th>Att %</th><th>Task %</th><th>Rep %</th><th>Total Eng</th><th>Eligibility</th><th class="admin-only">Act</th></tr>`;
+      viewableMembers.forEach(m => {
+        let e = getEngagement(m.id);
+        let eligible = isCertEligible(m.id);
+        let aR = getAttRate(m.id), tR = getTaskRate(m.id), rpR = getRepRate();
+        cH += `<tr>
       <td><b>${formatName(m)}</b></td>
-      <td><span class="badge ${aR>=90?'success':'danger'}">${aR}%</span></td>
-      <td><span class="badge ${tR>=90?'success':'danger'}">${tR}%</span></td>
-      <td><span class="badge ${rpR>=90?'success':'danger'}">${rpR}%</span></td>
-      <td><span class="badge ${e>=90?'success':'warning'}">${e}%</span></td>
-      <td>${eligible?'<span style="color:var(--success); font-weight:600">✓ Certified</span>':'<span class="text-muted">Ineligible</span>'}</td>
+      <td><span class="badge ${aR >= 90 ? 'success' : 'danger'}">${aR}%</span></td>
+      <td><span class="badge ${tR >= 90 ? 'success' : 'danger'}">${tR}%</span></td>
+      <td><span class="badge ${rpR >= 90 ? 'success' : 'danger'}">${rpR}%</span></td>
+      <td><span class="badge ${e >= 90 ? 'success' : 'warning'}">${e}%</span></td>
+      <td>${eligible ? '<span style="color:var(--success); font-weight:600">✓ Certified</span>' : '<span class="text-muted">Ineligible</span>'}</td>
       <td class="admin-only">
         <button class="btn btn-sm" onclick="openMemberModal('${esc(m.id)}')">Edit</button> 
         <button class="btn btn-sm btn-danger" onclick="delM('${esc(m.id)}')">Del</button>
       </td>
     </tr>`;
-  });
-  document.getElementById('certs-table').innerHTML = cH;
+      });
+      document.getElementById('certs-table').innerHTML = cH;
 
-  // Admin Phases
-  document.getElementById('phases-table').innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` + 
-    state.phases.map(p=>`<tr><td>${esc(p.name)}</td><td>${p.locked?'🔒 Locked':'🔓 Open'}</td>
-      <td><button class="btn btn-sm" onclick="togP('${esc(p.id)}')">${p.locked?'Unlock':'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delP('${esc(p.id)}')">Del</button></td></tr>`).join('');
-}
+      // Admin Phases
+      document.getElementById('phases-table').innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` +
+        state.phases.map(p => `<tr><td>${esc(p.name)}</td><td>${p.locked ? '🔒 Locked' : '🔓 Open'}</td>
+      <td><button class="btn btn-sm" onclick="togP('${esc(p.id)}')">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delP('${esc(p.id)}')">Del</button></td></tr>`).join('');
+    }
 
-// --- Actions ---
-window.editOverview = function() {
-  if (currentUser.role !== 'admin') return;
-  openModal('Edit Project Overview', `
+    // --- Actions ---
+    window.editOverview = function () {
+      if (currentUser.role !== 'admin') return;
+      openModal('Edit Project Overview', `
     <div class="form-group"><label>Overview Content</label>
     <textarea id="ov-text" rows="10" style="min-height:200px">${esc(state.overview)}</textarea></div>
   `, () => {
-    state.overview = document.getElementById('ov-text').value;
-    saveState();
-  });
-}
-window.manageSessions = function() {
-  if (currentUser.role !== 'admin') return;
-  let html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
-    <span>${esc(s.label)} ${s.active?'<span style="color:var(--success)">● Active</span>':''}</span>
+        state.overview = document.getElementById('ov-text').value;
+        saveState();
+      });
+    }
+    window.manageSessions = function () {
+      if (currentUser.role !== 'admin') return;
+      let html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
+    <span>${esc(s.label)} ${s.active ? '<span style="color:var(--success)">● Active</span>' : ''}</span>
     <div class="flex-gap">
       <button class="btn btn-sm" onclick="renameSess('${esc(s.id)}')">Rename</button>
-      <button class="btn btn-sm" onclick="togSess('${esc(s.id)}')">${s.active?'Deactivate':'Set Active'}</button>
+      <button class="btn btn-sm" onclick="togSess('${esc(s.id)}')">${s.active ? 'Deactivate' : 'Set Active'}</button>
       <button class="btn btn-sm btn-danger" onclick="delSess('${esc(s.id)}')">Del</button>
     </div>
   </div>`).join('') +
-    `<button class="btn btn-primary" style="margin-top:1rem; width:100%" onclick="addSession()">+ New Session</button>`;
-  openModal('Manage Sessions', html, () => { saveState(); });
-}
-window.addSession = function() {
-  if (currentUser.role !== 'admin') return;
-  let n = prompt("Session Name:");
-  if(n) { state.sessions.forEach(s=>s.active=false); state.sessions.push({id:'s'+Date.now(), label:n, active:true}); saveState(); closeModal(); manageSessions(); }
-}
-window.togSess = function(id) {
-  if (currentUser.role !== 'admin') return;
-  state.sessions.forEach(s => { if(s.id===id) s.active=!s.active; else s.active=false; });
-  saveState(); closeModal(); manageSessions();
-}
-window.renameSess = function(id) {
-  if (currentUser.role !== 'admin') return;
-  let s = state.sessions.find(x=>x.id===id);
-  if(!s) return;
-  let n = prompt('New session name:', s.label);
-  if(n) { s.label = n; saveState(); closeModal(); manageSessions(); }
-}
-window.delSess = function(id) {
-  if (currentUser.role !== 'admin') return;
-  let s = state.sessions.find(x=>x.id===id);
-  if(!s) return;
-  if(!confirm(`Are you sure you want to delete session "${s.label}"?`)) return;
-  if(!confirm(`FINAL WARNING: This will permanently remove "${s.label}" and all its attendance data. Continue?`)) return;
-  state.sessions = state.sessions.filter(x=>x.id!==id);
-  // Clean attendance data for this session
-  Object.keys(state.attendance).forEach(mid => { delete state.attendance[mid][id]; });
-  saveState(); closeModal(); manageSessions();
-}
-window.memberSignIn = function() {
-  if (currentUser.role !== 'member') return;
-  let act = state.sessions.find(s=>s.active);
-  if(!act) return;
-  if(!state.attendance[currentUser.id]) state.attendance[currentUser.id] = {};
-  state.attendance[currentUser.id][act.id] = 'present';
-  alert("Signed in successfully!"); saveState();
-}
-window.togAtt = function(mid, sid) {
-  if (currentUser.role !== 'admin') return;
-  let curr = state.attendance[mid]?.[sid] || 'none';
-  if(!state.attendance[mid]) state.attendance[mid]={};
-  state.attendance[mid][sid] = curr==='none'?'present':curr==='present'?'absent':'none';
-  saveState();
-}
+        `<button class="btn btn-primary" style="margin-top:1rem; width:100%" onclick="addSession()">+ New Session</button>`;
+      openModal('Manage Sessions', html, () => { saveState(); });
+    }
+    window.addSession = function () {
+      if (currentUser.role !== 'admin') return;
+      let n = prompt("Session Name:");
+      if (n) { state.sessions.forEach(s => s.active = false); state.sessions.push({ id: 's' + Date.now(), label: n, active: true }); saveState(); closeModal(); manageSessions(); }
+    }
+    window.togSess = function (id) {
+      if (currentUser.role !== 'admin') return;
+      state.sessions.forEach(s => { if (s.id === id) s.active = !s.active; else s.active = false; });
+      saveState(); closeModal(); manageSessions();
+    }
+    window.renameSess = function (id) {
+      if (currentUser.role !== 'admin') return;
+      let s = state.sessions.find(x => x.id === id);
+      if (!s) return;
+      let n = prompt('New session name:', s.label);
+      if (n) { s.label = n; saveState(); closeModal(); manageSessions(); }
+    }
+    window.delSess = function (id) {
+      if (currentUser.role !== 'admin') return;
+      let s = state.sessions.find(x => x.id === id);
+      if (!s) return;
+      if (!confirm(`Are you sure you want to delete session "${s.label}"?`)) return;
+      if (!confirm(`FINAL WARNING: This will permanently remove "${s.label}" and all its attendance data. Continue?`)) return;
+      state.sessions = state.sessions.filter(x => x.id !== id);
+      // Clean attendance data for this session
+      Object.keys(state.attendance).forEach(mid => { delete state.attendance[mid][id]; });
+      saveState(); closeModal(); manageSessions();
+    }
+    window.memberSignIn = function () {
+      let act = state.sessions.find(s => s.active);
+      if (!act) return;
+      if (!state.attendance[currentUser.id]) state.attendance[currentUser.id] = {};
+      state.attendance[currentUser.id][act.id] = 'present';
+      alert("Signed in successfully!"); saveState();
+    }
+    window.togAtt = function (mid, sid) {
+      if (currentUser.role !== 'admin') return;
+      let curr = state.attendance[mid]?.[sid] || 'none';
+      if (!state.attendance[mid]) state.attendance[mid] = {};
+      state.attendance[mid][sid] = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
+      saveState();
+    }
 
-window.openTaskModal = function(tid) {
-  if (currentUser.role !== 'admin') return;
-  let t = state.tasks.find(x=>x.id===tid) || {id:'', desc:'', phaseId:'', mids:[]};
-  let mO = state.members.map(m=>`<option value="${esc(m.id)}" ${t.mids.includes(m.id)?'selected':''}>${esc(m.name)}</option>`).join('');
-  let pO = state.phases.map(p=>`<option value="${esc(p.id)}" ${t.phaseId===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
-  
-  openModal(tid?'Edit Task':'New Task', `
+    window.openTaskModal = function (tid) {
+      if (currentUser.role !== 'admin') return;
+      let t = state.tasks.find(x => x.id === tid) || { id: '', desc: '', phaseId: '', mids: [] };
+      let mO = state.members.map(m => `<option value="${esc(m.id)}" ${t.mids.includes(m.id) ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
+      let pO = state.phases.map(p => `<option value="${esc(p.id)}" ${t.phaseId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+
+      openModal(tid ? 'Edit Task' : 'New Task', `
     <div class="form-group"><label>Description</label><input type="text" id="tm-desc" value="${esc(t.desc)}"></div>
     <div class="form-group"><label>Phase</label><select id="tm-ph">${pO}</select></div>
     <div class="form-group"><label>Assignees (Ctrl/Cmd+Click for multiple)</label><select id="tm-mids" multiple size="4">${mO}</select></div>
     ${tid ? `<button class="btn btn-danger" style="width:100%; margin-top:1rem" onclick="delT('${esc(tid)}')">Delete Task</button>` : ''}
   `, () => {
-    let sels = Array.from(document.getElementById('tm-mids').selectedOptions).map(x=>x.value);
-    let obj = { desc: document.getElementById('tm-desc').value, phaseId: document.getElementById('tm-ph').value, mids: sels };
-    if(!obj.desc) return alert("Desc required");
-    if(tid) Object.assign(t, obj); else state.tasks.push({id:'t'+Date.now(), ...obj, fileData:null, fileName:'', refs:'', status:'pending'});
-    saveState();
-  });
-}
-
-window.updT = function(id, f, v) {
-  let t = state.tasks.find(x=>x.id===id);
-  if(!t) return;
-  // Enforce references before marking done
-  if(f==='status' && v==='done' && !t.refs) {
-    alert('References are required before marking a task as done.');
-    renderAll(); return;
-  }
-  // Member edit-request flow for desc changes
-  if(currentUser.role==='member' && f==='desc') {
-    if(!state.editRequests) state.editRequests=[];
-    state.editRequests.push({id:'er'+Date.now(), tid:id, mid:currentUser.id, field:f, newVal:v, status:'pending'});
-    alert('Edit request submitted for admin approval.');
-    saveState(); return;
-  }
-  t[f]=v; saveState();
-}
-window.updR = function(id, f, v) { let r=state.reports.find(x=>x.id===id); if(r) r[f]=v; saveState(); }
-window.delT = function(id) { if (currentUser.role !== 'admin') return; if(confirm("Del?")){state.tasks=state.tasks.filter(x=>x.id!==id); saveState(); closeModal();} }
-
-// --- File Upload/Download ---
-function getBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-  });
-}
-
-// Sanitize file names before using them in Storage paths
-function sanitizeFileName(name) {
-  return name.replace(/[^a-zA-Z0-9._\-]/g, '_');
-}
-
-window.uploadTaskFile = async function(id, input) {
-  if(!input.files || !input.files[0]) return;
-  const file = input.files[0];
-  let t = state.tasks.find(x=>x.id===id);
-  if(t) {
-    try {
-      const path = `tasks/${id}/${sanitizeFileName(file.name)}`;
-      const { error } = await sb.storage.from('mih-files').upload(path, file, { upsert: true });
-      if(error) throw error;
-      t.filePath = path;
-      t.fileName = file.name;
-      delete t.fileData;
-      saveState();
-      alert("File attached!");
-    } catch (e) { alert("Error uploading file: " + e.message); }
-  }
-}
-
-window.uploadReportFile = async function(id, input) {
-  if(!input.files || !input.files[0]) return;
-  const file = input.files[0];
-  let r = state.reports.find(x=>x.id===id);
-  if(r) {
-    try {
-      const path = `reports/${id}/${sanitizeFileName(file.name)}`;
-      const { error } = await sb.storage.from('mih-files').upload(path, file, { upsert: true });
-      if(error) throw error;
-      r.filePath = path;
-      r.fileName = file.name;
-      delete r.fileData;
-      saveState();
-      alert("File attached!");
-    } catch (e) { alert("Error uploading file: " + e.message); }
-  }
-}
-
-window.downloadFile = async function(type, id) {
-  let item = type==='task' ? state.tasks.find(x=>x.id===id) : state.reports.find(x=>x.id===id);
-  if(!item || (!item.filePath && !item.fileData)) return alert("No file attached.");
-  // Legacy: base64 data attached before Supabase migration — kept for backward compatibility
-  if(item.fileData && !item.filePath) {
-    let a = document.createElement('a');
-    a.href = item.fileData;
-    a.download = item.fileName;
-    a.click();
-    return;
-  }
-  const { data, error } = await sb.storage.from('mih-files').createSignedUrl(item.filePath, 300);
-  if(error) return alert("Error getting download link: " + error.message);
-  window.open(data.signedUrl, '_blank');
-}
-
-window.openMemberModal = function(mid) {
-  if (currentUser.role !== 'admin') return;
-  let m = state.members.find(x=>x.id===mid) || {name:'', email:'', tag:''};
-  let pinPlaceholder = m.pinHash ? 'PIN already set — enter new to change' : 'Optional: set a login PIN';
-  let clearPinRow = m.pinHash
-    ? `<div class="form-group"><label style="display:flex;align-items:center;gap:0.5rem;font-weight:normal;cursor:pointer;"><input type="checkbox" id="am-clearpin"> Clear existing PIN (allow login without PIN)</label></div>`
-    : '';
-  openModal(mid?'Edit Member':'Add Member', `
-    <div class="form-group"><label>Name</label><input type="text" id="am-name" value="${esc(m.name)}"></div>
-    <div class="form-group"><label>Email Address</label><input type="email" id="am-email" value="${esc(m.email||'')}" placeholder="For notifications"></div>
-    <div class="form-group"><label>Nickname / Tag</label><input type="text" id="am-tag" value="${esc(m.tag||'')}" placeholder="e.g. @Leader"></div>
-    <div class="form-group"><label>Member PIN (optional)</label><input type="password" id="am-pin" placeholder="${pinPlaceholder}" autocomplete="new-password"></div>
-    ${clearPinRow}
-  `, async () => {
-    let n = document.getElementById('am-name').value.trim();
-    let e = document.getElementById('am-email').value.trim();
-    let t = document.getElementById('am-tag').value.trim();
-    let pinVal = document.getElementById('am-pin').value;
-    let clearPin = document.getElementById('am-clearpin')?.checked || false;
-    if(!n) return alert("Name required");
-    if(!e) return alert("Email required for notifications");
-    if(mid) {
-      m.name=n; m.email=e; m.tag=t;
-      if (clearPin) { delete m.pinHash; }
-      else if (pinVal) { m.pinHash = await sha256(pinVal); }
-    } else {
-      let newMember = {id:'m'+Date.now(), name:n, email:e, tag:t};
-      if (pinVal) { newMember.pinHash = await sha256(pinVal); }
-      state.members.push(newMember);
+        let sels = Array.from(document.getElementById('tm-mids').selectedOptions).map(x => x.value);
+        let obj = { desc: document.getElementById('tm-desc').value, phaseId: document.getElementById('tm-ph').value, mids: sels };
+        if (!obj.desc) return alert("Desc required");
+        if (tid) Object.assign(t, obj); else state.tasks.push({ id: 't' + Date.now(), ...obj, fileData: null, fileName: '', refs: '', status: 'pending' });
+        saveState();
+      });
     }
-    saveState();
-  });
-}
-window.delM = function(id) { if (currentUser.role !== 'admin') return; if(confirm("Del?")){state.members=state.members.filter(x=>x.id!==id); saveState();} }
 
-window.addPhase = function() { if (currentUser.role !== 'admin') return; let n=prompt("Name:"); if(n){state.phases.push({id:'ph'+Date.now(),name:n,locked:false});saveState();} }
-window.togP = function(id) { if (currentUser.role !== 'admin') return; let p=state.phases.find(x=>x.id===id); if(p){p.locked=!p.locked; saveState();} }
-window.delP = function(id) { if (currentUser.role !== 'admin') return; if(confirm("Del?")){state.phases=state.phases.filter(x=>x.id!==id); saveState();} }
+    window.updT = function (id, f, v) {
+      let t = state.tasks.find(x => x.id === id);
+      if (!t) return;
+      // Enforce references before marking done
+      if (f === 'status' && v === 'done' && !t.refs) {
+        alert('References are required before marking a task as done.');
+        renderAll(); return;
+      }
+      // Member edit-request flow for desc changes
+      if (currentUser.role === 'member' && f === 'desc') {
+        if (!state.editRequests) state.editRequests = [];
+        state.editRequests.push({ id: 'er' + Date.now(), tid: id, mid: currentUser.id, field: f, newVal: v, status: 'pending' });
+        alert('Edit request submitted for admin approval.');
+        saveState(); return;
+      }
+      t[f] = v; saveState();
+    }
+    window.updR = function (id, f, v) { let r = state.reports.find(x => x.id === id); if (r) r[f] = v; saveState(); }
+    window.delT = function (id) { if (currentUser.role !== 'admin') return; if (confirm("Del?")) { state.tasks = state.tasks.filter(x => x.id !== id); saveState(); closeModal(); } }
 
-// --- Deadline Notification ---
-window.sendDeadlineEmail = function() {
-  if (currentUser.role !== 'admin') return;
-  let emails = state.members.map(m => m.email).filter(Boolean);
-  if(!emails.length) return alert("No members with email addresses found.");
-  let bcc = emails.join(',');
-  let subject = encodeURIComponent("MIH Project Deadline Reminder");
-  let body = encodeURIComponent("Hello MIH Team,\n\nThis is a reminder that our project deadline is this Friday at 11:59 PM.\n\nPlease ensure your tasks are marked as 'done' and all reports are submitted with the necessary document uploads and references via the MIH Project Tracker.\n\nThank you!");
-  window.location.href = `mailto:?bcc=${bcc}&subject=${subject}&body=${body}`;
-}
+    // File Upload/Download via Supabase Storage
+    async function uploadToStorage(file, folder) {
+      const path = `${folder}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { data, error } = await sb.storage.from('uploads').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
+      return { url: urlData.publicUrl, name: file.name };
+    }
 
-// --- Edit Request Approval (Admin) ---
-window.viewEditRequests = function() {
-  if (currentUser.role !== 'admin') return;
-  if(!state.editRequests) state.editRequests=[];
-  let pending = state.editRequests.filter(r=>r.status==='pending');
-  if(!pending.length) { alert('No pending edit requests.'); return; }
-  let html = pending.map(r => {
-    let t = state.tasks.find(x=>x.id===r.tid);
-    let m = state.members.find(x=>x.id===r.mid);
-    return `<div class="glass-panel" style="padding:1rem; margin-bottom:0.5rem">
-      <div><b>${esc(m?.name||'?')}</b> wants to change <b>${esc(t?.desc||'?')}</b></div>
+    window.uploadTaskFile = async function (id, input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      let t = state.tasks.find(x => x.id === id);
+      if (!t) return;
+      input.disabled = true;
+      try {
+        const result = await uploadToStorage(file, 'tasks');
+        t.fileUrl = result.url;
+        t.fileName = result.name;
+        t.fileData = null;
+        await saveState();
+        // renderAll() is called inside saveState(), DOM is rebuilt — no need to reset input
+      } catch (e) { alert('Upload failed: ' + e.message); renderAll(); }
+    }
+
+    window.uploadReportFile = async function (id, input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      let r = state.reports.find(x => x.id === id);
+      if (!r) return;
+      input.disabled = true;
+      try {
+        const result = await uploadToStorage(file, 'reports');
+        r.fileUrl = result.url;
+        r.fileName = result.name;
+        r.fileData = null;
+        await saveState();
+      } catch (e) { alert('Upload failed: ' + e.message); renderAll(); }
+    }
+
+    window.downloadFile = function (type, id) {
+      let item = type === 'task' ? state.tasks.find(x => x.id === id) : state.reports.find(x => x.id === id);
+      if (!item) return alert('No file attached.');
+      const url = item.fileUrl || item.fileData;
+      if (!url) return alert('No file attached.');
+      let a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.download = item.fileName || 'download';
+      a.click();
+    }
+
+    window.openMemberModal = function (mid) {
+      if (currentUser.role !== 'admin') return;
+      let m = state.members.find(x => x.id === mid) || { name: '', email: '', tag: '' };
+      openModal(mid ? 'Edit Member' : 'Add Member', `
+    <div class="form-group"><label>Name</label><input type="text" id="am-name" value="${esc(m.name)}"></div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="am-email" value="${esc(m.email || '')}" placeholder="For login & notifications"></div>
+    <div class="form-group"><label>Nickname / Tag</label><input type="text" id="am-tag" value="${esc(m.tag || '')}" placeholder="e.g. @Leader"></div>
+  `, () => {
+        let n = document.getElementById('am-name').value.trim();
+        let e = document.getElementById('am-email').value.trim();
+        let t = document.getElementById('am-tag').value.trim();
+        if (!n) return alert("Name required");
+        if (!e) return alert("Email required for login");
+        if (mid) { m.name = n; m.email = e; m.tag = t; }
+        else { state.members.push({ id: 'm' + Date.now(), name: n, email: e, tag: t, pwd: '000' }); }
+        saveState();
+      });
+    }
+    window.delM = function (id) { if (currentUser.role !== 'admin') return; if (confirm("Del?")) { state.members = state.members.filter(x => x.id !== id); saveState(); } }
+
+    window.addPhase = function () { if (currentUser.role !== 'admin') return; let n = prompt("Name:"); if (n) { state.phases.push({ id: 'ph' + Date.now(), name: n, locked: false }); saveState(); } }
+    window.togP = function (id) { if (currentUser.role !== 'admin') return; let p = state.phases.find(x => x.id === id); if (p) { p.locked = !p.locked; saveState(); } }
+    window.delP = function (id) { if (currentUser.role !== 'admin') return; if (confirm("Del?")) { state.phases = state.phases.filter(x => x.id !== id); saveState(); } }
+
+    // --- Deadline Notification ---
+    window.sendDeadlineEmail = function () {
+      if (currentUser.role !== 'admin') return;
+      let emails = state.members.map(m => m.email).filter(Boolean);
+      if (!emails.length) return alert("No members with email addresses found.");
+      let bcc = emails.join(',');
+      let subject = encodeURIComponent("MIH Project Deadline Reminder");
+      let body = encodeURIComponent("Hello MIH Team,\n\nThis is a reminder that our project deadline is this Friday at 11:59 PM.\n\nPlease ensure your tasks are marked as 'done' and all reports are submitted with the necessary document uploads and references via the MIH Project Tracker.\n\nThank you!");
+      window.location.href = `mailto:?bcc=${bcc}&subject=${subject}&body=${body}`;
+    }
+
+    // --- Edit Request Approval (Admin) ---
+    window.viewEditRequests = function () {
+      if (currentUser.role !== 'admin') return;
+      if (!state.editRequests) state.editRequests = [];
+      let pending = state.editRequests.filter(r => r.status === 'pending');
+      if (!pending.length) { alert('No pending edit requests.'); return; }
+      let html = pending.map(r => {
+        let t = state.tasks.find(x => x.id === r.tid);
+        let m = state.members.find(x => x.id === r.mid);
+        return `<div class="glass-panel" style="padding:1rem; margin-bottom:0.5rem">
+      <div><b>${esc(m?.name || '?')}</b> wants to change <b>${esc(t?.desc || '?')}</b></div>
       <div class="text-muted" style="font-size:12px">New value: ${esc(r.newVal)}</div>
       <div class="flex-gap" style="margin-top:0.5rem">
         <button class="btn btn-sm btn-primary" onclick="approveER('${esc(r.id)}')">Approve</button>
         <button class="btn btn-sm btn-danger" onclick="rejectER('${esc(r.id)}')">Reject</button>
       </div>
     </div>`;
-  }).join('');
-  openModal('Edit Requests', html, ()=>{});
-}
-window.approveER = function(id) {
-  if (currentUser.role !== 'admin') return;
-  let r = state.editRequests.find(x=>x.id===id);
-  if(!r) return;
-  let t = state.tasks.find(x=>x.id===r.tid);
-  if(t) t[r.field] = r.newVal;
-  r.status='approved';
-  saveState(); closeModal(); viewEditRequests();
-}
-window.rejectER = function(id) {
-  if (currentUser.role !== 'admin') return;
-  let r = state.editRequests.find(x=>x.id===id);
-  if(r) r.status='rejected';
-  saveState(); closeModal(); viewEditRequests();
-}
+      }).join('');
+      openModal('Edit Requests', html, () => { });
+    }
+    window.approveER = function (id) {
+      if (currentUser.role !== 'admin') return;
+      let r = state.editRequests.find(x => x.id === id);
+      if (!r) return;
+      let t = state.tasks.find(x => x.id === r.tid);
+      if (t) t[r.field] = r.newVal;
+      r.status = 'approved';
+      saveState(); closeModal(); viewEditRequests();
+    }
+    window.rejectER = function (id) {
+      if (currentUser.role !== 'admin') return;
+      let r = state.editRequests.find(x => x.id === id);
+      if (r) r.status = 'rejected';
+      saveState(); closeModal(); viewEditRequests();
+    }
 
-window.exportJSON = function() {
-  if (currentUser.role !== 'admin') return;
-  let a = document.createElement('a');
-  a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
-  a.download = "mih_export.json"; a.click();
-}
+    window.exportJSON = function () {
+      if (currentUser.role !== 'admin') return;
+      let a = document.createElement('a');
+      a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+      a.download = "mih_export.json"; a.click();
+    }
 
-// --- Real-time Clock ---
-function updateClock() {
-  const now = new Date();
-  const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-  document.getElementById('realtime-clock').textContent = now.toLocaleString(undefined, options);
-}
-setInterval(updateClock, 1000);
-updateClock();
+    // --- Real-time Clock ---
+    function updateClock() {
+      const now = new Date();
+      const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      document.getElementById('realtime-clock').textContent = now.toLocaleString(undefined, options);
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
 
-init();
-</script>
+    init();
+  </script>
 </body>
+
 </html>
