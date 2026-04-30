@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self';">
   <title>MIH Project Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -789,10 +790,21 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
       return h.toString();
     }
 
+    // --- HTML Escape Helper ---
+    function esc(s) {
+      if (s == null) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     // --- Format Helper ---
     function formatName(m) {
       if (!m) return '';
-      return m.tag ? `${m.name} <span class="tag-badge">${m.tag}</span>` : m.name;
+      return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
     }
 
     // --- Modals & Auth ---
@@ -910,13 +922,13 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
       let actSess = state.sessions.find(s => s.active);
       document.getElementById('btn-signin').style.display = (currentUser.role === 'member' && actSess) ? 'inline-block' : 'none';
 
-      let aH = `<tr><th>Member</th>${state.sessions.map(s => `<th>${s.label}${s.active ? ' <span style="color:var(--success)">●</span>' : ''}</th>`).join('')}<th>Rate</th></tr>`;
+      let aH = `<tr><th>Member</th>${state.sessions.map(s => `<th>${esc(s.label)}${s.active ? ' <span style="color:var(--success)">●</span>' : ''}</th>`).join('')}<th>Rate</th></tr>`;
       viewableMembers.forEach(m => {
         aH += `<tr><td>${formatName(m)}</td>`;
         state.sessions.forEach(s => {
           let st = state.attendance[m.id]?.[s.id] || 'none';
           let dis = currentUser.role === 'admin' ? '' : 'disabled';
-          aH += `<td><button class="att-btn ${st}" ${dis} onclick="togAtt('${m.id}','${s.id}')">${st === 'present' ? '✓' : st === 'absent' ? '✕' : ''}</button></td>`;
+          aH += `<td><button class="att-btn ${esc(st)}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st === 'present' ? '✓' : st === 'absent' ? '✕' : ''}</button></td>`;
         });
         aH += `<td>${getAttRate(m.id)}%</td></tr>`;
       });
@@ -937,18 +949,18 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
 
           let opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
 
-          let fileInfo = t.fileName ? `<a href="#" onclick="downloadFile('task','${t.id}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${t.fileName}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+          let fileInfo = t.fileName ? `<a href="#" onclick="downloadFile('task','${esc(t.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
           h += `<tr>
-        <td><div style="font-weight:600; margin-bottom:4px">${t.desc}</div></td>
+        <td><div style="font-weight:600; margin-bottom:4px">${esc(t.desc)}</div></td>
         <td><span class="text-muted" style="font-size:12px">${mN || 'None'}</span></td>
-        <td><span class="badge">${ph.name || '?'}</span> ${ph.locked ? '🔒' : ''}</td>
+        <td><span class="badge">${esc(ph.name || '?')}</span> ${ph.locked ? '🔒' : ''}</td>
         <td>
           ${fileInfo}<br>
-          ${canEdit ? `<input type="file" accept=".pdf,.doc,.docx" onchange="uploadTaskFile('${t.id}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}
-          <input type="text" placeholder="References (Required)" value="${t.refs}" onchange="updT('${t.id}','refs',this.value)" ${!canEdit ? 'disabled' : ''} style="font-size:12px; padding:0.25rem; margin-top:4px">
+          ${canEdit ? `<input type="file" accept=".pdf,.doc,.docx" onchange="uploadTaskFile('${esc(t.id)}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}
+          <input type="text" placeholder="References (Required)" value="${esc(t.refs)}" onchange="updT('${esc(t.id)}','refs',this.value)" ${!canEdit ? 'disabled' : ''} style="font-size:12px; padding:0.25rem; margin-top:4px">
         </td>
-        <td><select onchange="updT('${t.id}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
-        <td class="admin-only"><button class="btn btn-sm" onclick="openTaskModal('${t.id}')">✎</button></td>
+        <td><select onchange="updT('${esc(t.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
+        <td class="admin-only"><button class="btn btn-sm" onclick="openTaskModal('${esc(t.id)}')">✎</button></td>
       </tr>`;
         });
         document.getElementById(tblId).innerHTML = h;
@@ -961,11 +973,11 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
       state.reports.forEach(r => {
         let canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
         let opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
-        let rFileInfo = r.fileName ? `<a href="#" onclick="downloadFile('report','${r.id}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${r.fileName}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+        let rFileInfo = r.fileName ? `<a href="#" onclick="downloadFile('report','${esc(r.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
         rH += `<tr>
-      <td style="font-weight:600">${r.type}</td>
-      <td>${rFileInfo}<br>${canEdit ? `<input type="file" accept=".doc,.docx" onchange="uploadReportFile('${r.id}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}</td>
-      <td><select onchange="updR('${r.id}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
+      <td style="font-weight:600">${esc(r.type)}</td>
+      <td>${rFileInfo}<br>${canEdit ? `<input type="file" accept=".doc,.docx" onchange="uploadReportFile('${esc(r.id)}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}</td>
+      <td><select onchange="updR('${esc(r.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
     </tr>`;
       });
       document.getElementById('reports-table').innerHTML = rH;
@@ -984,8 +996,8 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
       <td><span class="badge ${e >= 90 ? 'success' : 'warning'}">${e}%</span></td>
       <td>${eligible ? '<span style="color:var(--success); font-weight:600">✓ Certified</span>' : '<span class="text-muted">Ineligible</span>'}</td>
       <td class="admin-only">
-        <button class="btn btn-sm" onclick="openMemberModal('${m.id}')">Edit</button> 
-        <button class="btn btn-sm btn-danger" onclick="delM('${m.id}')">Del</button>
+        <button class="btn btn-sm" onclick="openMemberModal('${esc(m.id)}')">Edit</button> 
+        <button class="btn btn-sm btn-danger" onclick="delM('${esc(m.id)}')">Del</button>
       </td>
     </tr>`;
       });
@@ -993,47 +1005,53 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
 
       // Admin Phases
       document.getElementById('phases-table').innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` +
-        state.phases.map(p => `<tr><td>${p.name}</td><td>${p.locked ? '🔒 Locked' : '🔓 Open'}</td>
-      <td><button class="btn btn-sm" onclick="togP('${p.id}')">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delP('${p.id}')">Del</button></td></tr>`).join('');
+        state.phases.map(p => `<tr><td>${esc(p.name)}</td><td>${p.locked ? '🔒 Locked' : '🔓 Open'}</td>
+      <td><button class="btn btn-sm" onclick="togP('${esc(p.id)}')">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delP('${esc(p.id)}')">Del</button></td></tr>`).join('');
     }
 
     // --- Actions ---
     window.editOverview = function () {
+      if (currentUser.role !== 'admin') return;
       openModal('Edit Project Overview', `
     <div class="form-group"><label>Overview Content</label>
-    <textarea id="ov-text" rows="10" style="min-height:200px">${state.overview}</textarea></div>
+    <textarea id="ov-text" rows="10" style="min-height:200px">${esc(state.overview)}</textarea></div>
   `, () => {
         state.overview = document.getElementById('ov-text').value;
         saveState();
       });
     }
     window.manageSessions = function () {
+      if (currentUser.role !== 'admin') return;
       let html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
-    <span>${s.label} ${s.active ? '<span style="color:var(--success)">● Active</span>' : ''}</span>
+    <span>${esc(s.label)} ${s.active ? '<span style="color:var(--success)">● Active</span>' : ''}</span>
     <div class="flex-gap">
-      <button class="btn btn-sm" onclick="renameSess('${s.id}')">Rename</button>
-      <button class="btn btn-sm" onclick="togSess('${s.id}')">${s.active ? 'Deactivate' : 'Set Active'}</button>
-      <button class="btn btn-sm btn-danger" onclick="delSess('${s.id}')">Del</button>
+      <button class="btn btn-sm" onclick="renameSess('${esc(s.id)}')">Rename</button>
+      <button class="btn btn-sm" onclick="togSess('${esc(s.id)}')">${s.active ? 'Deactivate' : 'Set Active'}</button>
+      <button class="btn btn-sm btn-danger" onclick="delSess('${esc(s.id)}')">Del</button>
     </div>
   </div>`).join('') +
         `<button class="btn btn-primary" style="margin-top:1rem; width:100%" onclick="addSession()">+ New Session</button>`;
       openModal('Manage Sessions', html, () => { saveState(); });
     }
     window.addSession = function () {
+      if (currentUser.role !== 'admin') return;
       let n = prompt("Session Name:");
       if (n) { state.sessions.forEach(s => s.active = false); state.sessions.push({ id: 's' + Date.now(), label: n, active: true }); saveState(); closeModal(); manageSessions(); }
     }
     window.togSess = function (id) {
+      if (currentUser.role !== 'admin') return;
       state.sessions.forEach(s => { if (s.id === id) s.active = !s.active; else s.active = false; });
       saveState(); closeModal(); manageSessions();
     }
     window.renameSess = function (id) {
+      if (currentUser.role !== 'admin') return;
       let s = state.sessions.find(x => x.id === id);
       if (!s) return;
       let n = prompt('New session name:', s.label);
       if (n) { s.label = n; saveState(); closeModal(); manageSessions(); }
     }
     window.delSess = function (id) {
+      if (currentUser.role !== 'admin') return;
       let s = state.sessions.find(x => x.id === id);
       if (!s) return;
       if (!confirm(`Are you sure you want to delete session "${s.label}"?`)) return;
@@ -1051,6 +1069,7 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
       alert("Signed in successfully!"); saveState();
     }
     window.togAtt = function (mid, sid) {
+      if (currentUser.role !== 'admin') return;
       let curr = state.attendance[mid]?.[sid] || 'none';
       if (!state.attendance[mid]) state.attendance[mid] = {};
       state.attendance[mid][sid] = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
@@ -1058,15 +1077,16 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
     }
 
     window.openTaskModal = function (tid) {
+      if (currentUser.role !== 'admin') return;
       let t = state.tasks.find(x => x.id === tid) || { id: '', desc: '', phaseId: '', mids: [] };
-      let mO = state.members.map(m => `<option value="${m.id}" ${t.mids.includes(m.id) ? 'selected' : ''}>${m.name}</option>`).join('');
-      let pO = state.phases.map(p => `<option value="${p.id}" ${t.phaseId === p.id ? 'selected' : ''}>${p.name}</option>`).join('');
+      let mO = state.members.map(m => `<option value="${esc(m.id)}" ${t.mids.includes(m.id) ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
+      let pO = state.phases.map(p => `<option value="${esc(p.id)}" ${t.phaseId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
 
       openModal(tid ? 'Edit Task' : 'New Task', `
-    <div class="form-group"><label>Description</label><input type="text" id="tm-desc" value="${t.desc}"></div>
+    <div class="form-group"><label>Description</label><input type="text" id="tm-desc" value="${esc(t.desc)}"></div>
     <div class="form-group"><label>Phase</label><select id="tm-ph">${pO}</select></div>
     <div class="form-group"><label>Assignees (Ctrl/Cmd+Click for multiple)</label><select id="tm-mids" multiple size="4">${mO}</select></div>
-    ${tid ? `<button class="btn btn-danger" style="width:100%; margin-top:1rem" onclick="delT('${tid}')">Delete Task</button>` : ''}
+    ${tid ? `<button class="btn btn-danger" style="width:100%; margin-top:1rem" onclick="delT('${esc(tid)}')">Delete Task</button>` : ''}
   `, () => {
         let sels = Array.from(document.getElementById('tm-mids').selectedOptions).map(x => x.value);
         let obj = { desc: document.getElementById('tm-desc').value, phaseId: document.getElementById('tm-ph').value, mids: sels };
@@ -1094,7 +1114,7 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
       t[f] = v; saveState();
     }
     window.updR = function (id, f, v) { let r = state.reports.find(x => x.id === id); if (r) r[f] = v; saveState(); }
-    window.delT = function (id) { if (confirm("Del?")) { state.tasks = state.tasks.filter(x => x.id !== id); saveState(); closeModal(); } }
+    window.delT = function (id) { if (currentUser.role !== 'admin') return; if (confirm("Del?")) { state.tasks = state.tasks.filter(x => x.id !== id); saveState(); closeModal(); } }
 
     // File Upload/Download via Supabase Storage
     async function uploadToStorage(file, folder) {
@@ -1147,11 +1167,12 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
     }
 
     window.openMemberModal = function (mid) {
+      if (currentUser.role !== 'admin') return;
       let m = state.members.find(x => x.id === mid) || { name: '', email: '', tag: '' };
       openModal(mid ? 'Edit Member' : 'Add Member', `
-    <div class="form-group"><label>Name</label><input type="text" id="am-name" value="${m.name}"></div>
-    <div class="form-group"><label>Email Address</label><input type="email" id="am-email" value="${m.email || ''}" placeholder="For login & notifications"></div>
-    <div class="form-group"><label>Nickname / Tag</label><input type="text" id="am-tag" value="${m.tag || ''}" placeholder="e.g. @Leader"></div>
+    <div class="form-group"><label>Name</label><input type="text" id="am-name" value="${esc(m.name)}"></div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="am-email" value="${esc(m.email || '')}" placeholder="For login & notifications"></div>
+    <div class="form-group"><label>Nickname / Tag</label><input type="text" id="am-tag" value="${esc(m.tag || '')}" placeholder="e.g. @Leader"></div>
   `, () => {
         let n = document.getElementById('am-name').value.trim();
         let e = document.getElementById('am-email').value.trim();
@@ -1163,14 +1184,15 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
         saveState();
       });
     }
-    window.delM = function (id) { if (confirm("Del?")) { state.members = state.members.filter(x => x.id !== id); saveState(); } }
+    window.delM = function (id) { if (currentUser.role !== 'admin') return; if (confirm("Del?")) { state.members = state.members.filter(x => x.id !== id); saveState(); } }
 
-    window.addPhase = function () { let n = prompt("Name:"); if (n) { state.phases.push({ id: 'ph' + Date.now(), name: n, locked: false }); saveState(); } }
-    window.togP = function (id) { let p = state.phases.find(x => x.id === id); if (p) { p.locked = !p.locked; saveState(); } }
-    window.delP = function (id) { if (confirm("Del?")) { state.phases = state.phases.filter(x => x.id !== id); saveState(); } }
+    window.addPhase = function () { if (currentUser.role !== 'admin') return; let n = prompt("Name:"); if (n) { state.phases.push({ id: 'ph' + Date.now(), name: n, locked: false }); saveState(); } }
+    window.togP = function (id) { if (currentUser.role !== 'admin') return; let p = state.phases.find(x => x.id === id); if (p) { p.locked = !p.locked; saveState(); } }
+    window.delP = function (id) { if (currentUser.role !== 'admin') return; if (confirm("Del?")) { state.phases = state.phases.filter(x => x.id !== id); saveState(); } }
 
     // --- Deadline Notification ---
     window.sendDeadlineEmail = function () {
+      if (currentUser.role !== 'admin') return;
       let emails = state.members.map(m => m.email).filter(Boolean);
       if (!emails.length) return alert("No members with email addresses found.");
       let bcc = emails.join(',');
@@ -1181,6 +1203,7 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
 
     // --- Edit Request Approval (Admin) ---
     window.viewEditRequests = function () {
+      if (currentUser.role !== 'admin') return;
       if (!state.editRequests) state.editRequests = [];
       let pending = state.editRequests.filter(r => r.status === 'pending');
       if (!pending.length) { alert('No pending edit requests.'); return; }
@@ -1188,17 +1211,18 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
         let t = state.tasks.find(x => x.id === r.tid);
         let m = state.members.find(x => x.id === r.mid);
         return `<div class="glass-panel" style="padding:1rem; margin-bottom:0.5rem">
-      <div><b>${m?.name || '?'}</b> wants to change <b>${t?.desc || '?'}</b></div>
-      <div class="text-muted" style="font-size:12px">New value: ${r.newVal}</div>
+      <div><b>${esc(m?.name || '?')}</b> wants to change <b>${esc(t?.desc || '?')}</b></div>
+      <div class="text-muted" style="font-size:12px">New value: ${esc(r.newVal)}</div>
       <div class="flex-gap" style="margin-top:0.5rem">
-        <button class="btn btn-sm btn-primary" onclick="approveER('${r.id}')">Approve</button>
-        <button class="btn btn-sm btn-danger" onclick="rejectER('${r.id}')">Reject</button>
+        <button class="btn btn-sm btn-primary" onclick="approveER('${esc(r.id)}')">Approve</button>
+        <button class="btn btn-sm btn-danger" onclick="rejectER('${esc(r.id)}')">Reject</button>
       </div>
     </div>`;
       }).join('');
       openModal('Edit Requests', html, () => { });
     }
     window.approveER = function (id) {
+      if (currentUser.role !== 'admin') return;
       let r = state.editRequests.find(x => x.id === id);
       if (!r) return;
       let t = state.tasks.find(x => x.id === r.tid);
@@ -1207,12 +1231,14 @@ Weekly Meeting Structure (Every Saturday 4\u20136pm)
       saveState(); closeModal(); viewEditRequests();
     }
     window.rejectER = function (id) {
+      if (currentUser.role !== 'admin') return;
       let r = state.editRequests.find(x => x.id === id);
       if (r) r.status = 'rejected';
       saveState(); closeModal(); viewEditRequests();
     }
 
     window.exportJSON = function () {
+      if (currentUser.role !== 'admin') return;
       let a = document.createElement('a');
       a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
       a.download = "mih_export.json"; a.click();
