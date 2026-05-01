@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self';">
+    content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self';">
   <title>Materials Innovation Hub</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -923,7 +923,7 @@
           <button class="btn btn-sm" onclick="updRecord('sessions','${esc(s.id)}','active',${!s.active}); closeModal();">Toggle Active</button>
           <button class="btn btn-sm btn-danger" onclick="delRecord('sessions','${esc(s.id)}'); closeModal();">Del</button>
         </div></div>`).join('') +
-        `<div style="margin-top:1rem;"><label for="ns-name" style="display:none;">New session name</label><input type="text" id="ns-name" placeholder="New session name">
+        `<div style="margin-top:1rem;"><input type="text" id="ns-name" placeholder="New session name">
          <button class="btn btn-primary" style="margin-top:0.5rem; width:100%" onclick="addNewSession()">+ Create Session</button></div>`;
       openModal('Manage Sessions', html, () => { });
     };
