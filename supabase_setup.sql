@@ -180,4 +180,20 @@ DROP POLICY IF EXISTS "Only admins delete files" ON storage.objects;
 
 CREATE POLICY "Public read uploads" ON storage.objects FOR SELECT TO public USING (bucket_id = 'uploads');
 CREATE POLICY "Auth users upload files" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'uploads');
-CREATE POLICY "Only admins delete files" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'uploads' AND EXISTS (SELECT 1 FROM public.members WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Only admins delete files" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'uploads' AND EXISTS (SELECT 1 FROM public.members WHERE id = auth.uid() AND role = 'admin'));- -   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =  
+ - -   P H A S E   5 :   A U T O M A T E D   F R I D A Y   R E M I N D E R S   ( p g _ c r o n   +   E d g e   F u n c t i o n )  
+ - -   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =  
+ - -   E n s u r e   t h e   p g _ n e t   a n d   p g _ c r o n   e x t e n s i o n s   a r e   e n a b l e d   i n   y o u r   S u p a b a s e   d a s h b o a r d   f i r s t .  
+ - -   T h e n   r u n   t h i s   t o   s c h e d u l e   t h e   w e e k l y   r e m i n d e r   ( F r i d a y s   a t   9 : 0 0   A M   U T C ) :  
+ - -   s e l e c t   c r o n . s c h e d u l e (  
+ - -       ' f r i d a y - r e m i n d e r s ' ,  
+ - -       ' 0   9   *   *   5 ' ,    
+ - -       \ $ \ $  
+ - -           s e l e c t   n e t . h t t p _ p o s t (  
+ - -               u r l : = ' h t t p s : / / g r v b y x k i l r o b y r b s q q q r . s u p a b a s e . c o / f u n c t i o n s / v 1 / f r i d a y - r e m i n d e r s ' ,  
+ - -               h e a d e r s : = ' { \  
+ C o n t e n t - T y p e \ :   \ a p p l i c a t i o n / j s o n \ ,   \ x - c r o n - s e c r e t \ :   \ Y O U R _ S E C R E T _ H E R E \ } ' : : j s o n b  
+ - -           ) ;  
+ - -       \ $ \ $  
+ - -   ) ;  
+ 

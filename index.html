@@ -9,6 +9,7 @@
   <title>Materials Innovation Hub</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* CSS Remains unchanged to preserve your UI design */
     :root {
@@ -511,6 +512,16 @@
           <div class="auth-fallback text-muted" style="margin-top: 1rem;">Please log in to view the leaderboard.</div>
         </div>
       </div>
+      <div class="dash-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;" class="auth-required">
+        <div class="glass-panel">
+          <h3>Task Distribution</h3>
+          <div style="height: 250px; margin-top: 1rem;"><canvas id="taskChart"></canvas></div>
+        </div>
+        <div class="glass-panel">
+          <h3>Attendance per Session</h3>
+          <div style="height: 250px; margin-top: 1rem;"><canvas id="attChart"></canvas></div>
+        </div>
+      </div>
     </div>
 
     <!-- ATTENDANCE -->
@@ -789,6 +800,47 @@
     }
     function getEngagement(mid) { return Math.round((getAttRate(mid) * 0.4) + (getTaskRate(mid) * 0.35) + (getRepRate() * 0.25)); }
 
+    // ─── Charts Integration ──────────────────────────────────────────────────────
+    let taskChartInst = null;
+    let attChartInst = null;
+
+    function renderCharts() {
+      if (!window.Chart) return;
+      
+      const ctxTask = document.getElementById('taskChart');
+      if (ctxTask && currentUser.role !== 'none') {
+        if (taskChartInst) taskChartInst.destroy();
+        const p = state.tasks.filter(t => t.status === 'pending').length;
+        const i = state.tasks.filter(t => t.status === 'in progress').length;
+        const d = state.tasks.filter(t => t.status === 'done').length;
+        
+        taskChartInst = new Chart(ctxTask, {
+          type: 'doughnut',
+          data: {
+            labels: ['Pending', 'In Progress', 'Done'],
+            datasets: [{ data: [p, i, d], backgroundColor: ['#ef4444', '#f59e0b', '#10b981'], borderWidth: 0 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
+        });
+      }
+
+      const ctxAtt = document.getElementById('attChart');
+      if (ctxAtt && currentUser.role !== 'none') {
+        if (attChartInst) attChartInst.destroy();
+        const labels = state.sessions.map(s => s.label);
+        const data = state.sessions.map(s => state.attendance.filter(a => a.session_id === s.id && a.status === 'present').length);
+        
+        attChartInst = new Chart(ctxAtt, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{ label: 'Members Present', data: data, backgroundColor: '#38bdf8', borderRadius: 4 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { ticks: { color: '#94a3b8' } } } }
+        });
+      }
+    }
+
     // ─── Render ──────────────────────────────────────────────────────────────────
     function esc(s) {
       if (s == null) return '';
@@ -911,6 +963,9 @@
       document.getElementById('phases-table').innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` +
         state.phases.map(p => `<tr><td>${esc(p.name)}</td><td>${p.locked ? '🔒 Locked' : '🔓 Open'}</td>
           <td><button class="btn btn-sm" onclick="updRecord('phases','${esc(p.id)}','locked',${!p.locked})">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delRecord('phases','${esc(p.id)}')">Del</button></td></tr>`).join('');
+          
+      // Render visual analytics
+      renderCharts();
     }
 
     // ─── Database Actions (Direct DB Updates) ────────────────────────────────────
