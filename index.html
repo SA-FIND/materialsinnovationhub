@@ -650,24 +650,29 @@
 
       // Listen for auth state changes (Handles login, logout, and page refresh)
       sb.auth.onAuthStateChange(async (event, session) => {
-        if (session) {
-          // Fetch user role from public members table
-          const { data: memberData, error } = await sb.from('members')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
+        try {
+          if (session) {
+            // Fetch user role from public members table
+            const { data: memberData, error } = await sb.from('members')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
 
-          if (memberData) {
-            currentUser = { role: memberData.role, id: memberData.id, name: memberData.name };
+            if (memberData) {
+              currentUser = { role: memberData.role, id: memberData.id, name: memberData.name };
+            } else {
+              currentUser = { role: 'member', id: session.user.id, name: 'New User' };
+            }
           } else {
-            currentUser = { role: 'member', id: session.user.id, name: 'New User' };
+            currentUser = { role: 'none', id: null, name: '' };
           }
-        } else {
-          currentUser = { role: 'none', id: null, name: '' };
-        }
 
-        applyRole();
-        await fetchData(); // Fetch data based on new permissions
+          applyRole();
+          await fetchData(); // Fetch data based on new permissions
+        } catch (err) {
+          console.error("Auth state change error:", err);
+          alert("Error updating interface after login: " + err.message);
+        }
       });
     }
 
@@ -730,12 +735,17 @@
         if (!email || !password) { errDiv.textContent = 'Enter email and password'; return false; }
 
         errDiv.textContent = 'Logging in...';
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) {
-          errDiv.textContent = 'Login failed: ' + error.message;
+        try {
+          const { error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) {
+            errDiv.textContent = 'Login failed: ' + error.message;
+            return false;
+          }
+          return true; // Closes modal
+        } catch (e) {
+          errDiv.textContent = 'System/Network Error: ' + e.message;
           return false;
         }
-        return true; // Closes modal
       });
     }
 
@@ -772,6 +782,7 @@
         renderAll();
       } catch (error) {
         console.error("Error fetching data:", error);
+        alert("Network or system error while fetching data: " + error.message);
       }
     }
 
