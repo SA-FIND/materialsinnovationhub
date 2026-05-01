@@ -4,444 +4,82 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self';">
   <title>Materials Innovation Hub</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     /* CSS Remains unchanged to preserve your UI design */
-    :root {
-      --mih-blue: #010066;
-      --mih-accent: #38bdf8;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-    }
-
-    [data-theme="dark"] {
-      --bg-main: #0f172a;
-      --panel-bg: rgba(30, 41, 59, 0.7);
-      --panel-border: rgba(255, 255, 255, 0.1);
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --input-bg: rgba(0, 0, 0, 0.3);
-      --hover-bg: rgba(255, 255, 255, 0.05);
-    }
-
-    [data-theme="light"] {
-      --bg-main: #f0f4f8;
-      --panel-bg: rgba(255, 255, 255, 0.8);
-      --panel-border: rgba(0, 0, 0, 0.1);
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --input-bg: rgba(255, 255, 255, 0.9);
-      --hover-bg: rgba(0, 0, 0, 0.03);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      min-height: 100vh;
-      padding: 2rem;
-      font-size: 14px;
-      transition: background-color 0.3s, color 0.3s;
-    }
-
-    .glass-panel {
-      background: var(--panel-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--panel-border);
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .app-container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .logo-area {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .logo-img {
-      height: 48px;
-      border-radius: 8px;
-    }
-
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--mih-blue);
-    }
-
-    [data-theme="dark"] h1 {
-      color: #818cf8;
-    }
-
-    .controls-bar {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .btn {
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      color: var(--text-main);
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: 0.2s;
-      font-size: 13px;
-    }
-
-    .btn:hover {
-      background: var(--hover-bg);
-    }
-
-    .btn-primary {
-      background: var(--mih-blue);
-      color: #fff;
-      border: none;
-      font-weight: 600;
-    }
-
-    .btn-primary:hover {
-      background: #020088;
-    }
-
-    [data-theme="dark"] .btn-primary {
-      background: var(--mih-accent);
-      color: #000;
-    }
-
-    [data-theme="dark"] .btn-primary:hover {
-      background: #0ea5e9;
-    }
-
-    .btn-danger {
-      background: rgba(239, 68, 68, 0.1);
-      color: var(--danger);
-      border-color: rgba(239, 68, 68, 0.3);
-    }
-
-    .btn-sm {
-      padding: 0.25rem 0.5rem;
-      font-size: 11px;
-    }
-
-    .tabs {
-      display: flex;
-      gap: 0.5rem;
-      overflow-x: auto;
-      margin-bottom: 1.5rem;
-    }
-
-    .tab-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      padding: 0.75rem 1.25rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .tab-btn:hover {
-      color: var(--text-main);
-    }
-
-    .tab-btn.active {
-      background: var(--panel-bg);
-      color: var(--text-main);
-      border: 1px solid var(--panel-border);
-    }
-
-    .view {
-      display: none;
-      animation: fadeIn 0.3s ease;
-    }
-
-    .view.active {
-      display: block;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(5px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    .flex-between {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .flex-gap {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
-
-    .text-muted {
-      color: var(--text-muted);
-    }
-
-    .badge {
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .badge.success {
-      background: rgba(16, 185, 129, 0.1);
-      color: var(--success);
-    }
-
-    .badge.warning {
-      background: rgba(245, 158, 11, 0.1);
-      color: var(--warning);
-    }
-
-    .badge.danger {
-      background: rgba(239, 68, 68, 0.1);
-      color: var(--danger);
-    }
-
-    .tag-badge {
-      background: var(--hover-bg);
-      border: 1px solid var(--panel-border);
-      color: var(--text-muted);
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      margin-left: 4px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-
-    th {
-      padding: 1rem 0.5rem;
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      border-bottom: 1px solid var(--panel-border);
-    }
-
-    td {
-      padding: 1rem 0.5rem;
-      border-bottom: 1px solid var(--panel-border);
-      vertical-align: middle;
-    }
-
-    tr:hover td {
-      background: var(--hover-bg);
-    }
-
-    input,
-    select,
-    textarea {
-      background: var(--input-bg);
-      border: 1px solid var(--panel-border);
-      color: var(--text-main);
-      padding: 0.5rem;
-      border-radius: 6px;
-      width: 100%;
-      font-family: inherit;
-    }
-
-    input:focus,
-    select:focus,
-    textarea:focus {
-      outline: none;
-      border-color: var(--mih-accent);
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 80px;
-    }
-
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(4px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-    }
-
-    .modal {
-      background: var(--panel-bg);
-      width: 100%;
-      max-width: 500px;
-      padding: 2rem;
-      border-radius: 12px;
-      border: 1px solid var(--panel-border);
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    .form-group {
-      margin-bottom: 1rem;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 0.4rem;
-      font-weight: 600;
-    }
-
-    .overview-box {
-      white-space: pre-wrap;
-      line-height: 1.6;
-    }
-
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1.5rem;
-    }
-
-    .kpi-val {
-      font-size: 2.5rem;
-      font-weight: 700;
-      margin-bottom: 0.2rem;
-    }
-
-    .att-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: 1px solid var(--panel-border);
-      background: transparent;
-      cursor: pointer;
-      color: var(--text-main);
-    }
-
-    .att-btn.present {
-      background: var(--success);
-      border-color: var(--success);
-      color: white;
-    }
-
-    .att-btn.absent {
-      background: var(--danger);
-      border-color: var(--danger);
-      color: white;
-    }
-
-    .admin-only,
-    .member-only {
-      display: none;
-    }
-
-    body[data-role="admin"] .admin-only {
-      display: inline-block;
-    }
-
-    body[data-role="admin"] .admin-flex {
-      display: flex;
-    }
-
-    body[data-role="member"] .member-only {
-      display: inline-block;
-    }
-
-    body[data-role="none"] .auth-required {
-      display: none !important;
-    }
-
-    body[data-role="none"] .auth-fallback {
-      display: block !important;
-    }
-
-    .auth-fallback {
-      display: none;
-    }
-
-    .history-table {
-      opacity: 0.7;
-    }
-
+    :root { --mih-blue: #010066; --mih-accent: #38bdf8; --success: #10b981; --warning: #f59e0b; --danger: #ef4444; }
+    [data-theme="dark"] { --bg-main: #0f172a; --panel-bg: rgba(30, 41, 59, 0.7); --panel-border: rgba(255, 255, 255, 0.1); --text-main: #f8fafc; --text-muted: #94a3b8; --input-bg: rgba(0, 0, 0, 0.3); --hover-bg: rgba(255, 255, 255, 0.05); }
+    [data-theme="light"] { --bg-main: #f0f4f8; --panel-bg: rgba(255, 255, 255, 0.8); --panel-border: rgba(0, 0, 0, 0.1); --text-main: #0f172a; --text-muted: #64748b; --input-bg: rgba(255, 255, 255, 0.9); --hover-bg: rgba(0, 0, 0, 0.03); }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); min-height: 100vh; padding: 2rem; font-size: 14px; transition: background-color 0.3s, color 0.3s; }
+    .glass-panel { background: var(--panel-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--panel-border); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); padding: 1.5rem; margin-bottom: 1.5rem; }
+    .app-container { max-width: 1200px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .logo-area { display: flex; align-items: center; gap: 1rem; }
+    .logo-img { height: 48px; border-radius: 8px; }
+    h1 { font-size: 1.5rem; font-weight: 700; color: var(--mih-blue); }
+    [data-theme="dark"] h1 { color: #818cf8; }
+    .controls-bar { display: flex; align-items: center; gap: 1rem; }
+    .btn { background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 13px; }
+    .btn:hover { background: var(--hover-bg); }
+    .btn-primary { background: var(--mih-blue); color: #fff; border: none; font-weight: 600; }
+    .btn-primary:hover { background: #020088; }
+    [data-theme="dark"] .btn-primary { background: var(--mih-accent); color: #000; }
+    [data-theme="dark"] .btn-primary:hover { background: #0ea5e9; }
+    .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
+    .btn-sm { padding: 0.25rem 0.5rem; font-size: 11px; }
+    .tabs { display: flex; gap: 0.5rem; overflow-x: auto; margin-bottom: 1.5rem; }
+    .tab-btn { background: transparent; border: none; color: var(--text-muted); padding: 0.75rem 1.25rem; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+    .tab-btn:hover { color: var(--text-main); }
+    .tab-btn.active { background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--panel-border); }
+    .view { display: none; animation: fadeIn 0.3s ease; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .flex-gap { display: flex; gap: 1rem; align-items: center; }
+    .text-muted { color: var(--text-muted); }
+    .badge { padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+    .badge.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .badge.warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+    .badge.danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+    .tag-badge { background: var(--hover-bg); border: 1px solid var(--panel-border); color: var(--text-muted); font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 1rem 0.5rem; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); }
+    td { padding: 1rem 0.5rem; border-bottom: 1px solid var(--panel-border); vertical-align: middle; }
+    tr:hover td { background: var(--hover-bg); }
+    input, select, textarea { background: var(--input-bg); border: 1px solid var(--panel-border); color: var(--text-main); padding: 0.5rem; border-radius: 6px; width: 100%; font-family: inherit; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--mih-accent); }
+    textarea { resize: vertical; min-height: 80px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal { background: var(--panel-bg); width: 100%; max-width: 500px; padding: 2rem; border-radius: 12px; border: 1px solid var(--panel-border); max-height: 90vh; overflow-y: auto; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 600; }
+    .overview-box { white-space: pre-wrap; line-height: 1.6; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+    .kpi-val { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .att-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--panel-border); background: transparent; cursor: pointer; color: var(--text-main); }
+    .att-btn.present { background: var(--success); border-color: var(--success); color: white; }
+    .att-btn.absent { background: var(--danger); border-color: var(--danger); color: white; }
+    .admin-only, .member-only { display: none; }
+    body[data-role="admin"] .admin-only { display: inline-block; }
+    body[data-role="admin"] .admin-flex { display: flex; }
+    body[data-role="member"] .member-only { display: inline-block; }
+    body[data-role="none"] .auth-required { display: none !important; }
+    body[data-role="none"] .auth-fallback { display: block !important; }
+    .auth-fallback { display: none; }
+    .history-table { opacity: 0.7; }
     @media (max-width: 768px) {
-      header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-      }
-
-      .controls-bar {
-        flex-wrap: wrap;
-      }
-
-      .dash-grid {
-        grid-template-columns: 1fr !important;
-      }
-
-      .flex-between {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-      }
-
-      .flex-between .flex-gap {
-        width: 100%;
-        justify-content: flex-start;
-      }
-
-      .glass-panel {
-        padding: 1rem;
-      }
-
-      .tabs {
-        padding-bottom: 0.5rem;
-      }
-
-      th,
-      td {
-        font-size: 12px;
-        padding: 0.75rem 0.25rem;
-      }
+      header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+      .controls-bar { flex-wrap: wrap; }
+      .dash-grid { grid-template-columns: 1fr !important; }
+      .flex-between { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+      .flex-between .flex-gap { width: 100%; justify-content: flex-start; }
+      .glass-panel { padding: 1rem; }
+      .tabs { padding-bottom: 0.5rem; }
+      th, td { font-size: 12px; padding: 0.75rem 0.25rem; }
     }
   </style>
 </head>
@@ -458,9 +96,7 @@
         </div>
       </div>
       <div class="controls-bar">
-        <div id="realtime-clock"
-          style="font-size: 12px; font-weight: 600; color: var(--mih-accent); background: var(--panel-bg); padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--panel-border);">
-        </div>
+        <div id="realtime-clock" style="font-size: 12px; font-weight: 600; color: var(--mih-accent); background: var(--panel-bg); padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--panel-border);"></div>
         <div class="badge warning" style="font-size: 11px;">⏰ Deadline: Friday 11:59 PM</div>
         <button class="btn" onclick="toggleTheme()">🌓 Theme</button>
         <span id="user-status" style="font-weight: 600; margin-left: 1rem;">View Only</span>
@@ -518,8 +154,7 @@
         <div class="flex-between">
           <h3>Session Attendance</h3>
           <div class="flex-gap">
-            <button class="btn btn-primary member-only" id="btn-signin" style="display:none;"
-              onclick="memberSignIn()">Sign In to Active Session</button>
+            <button class="btn btn-primary member-only" id="btn-signin" style="display:none;" onclick="memberSignIn()">Sign In to Active Session</button>
             <button class="btn admin-only" onclick="manageSessions()">Manage Sessions</button>
           </div>
         </div>
@@ -621,7 +256,7 @@
       phases: [],
       members: [],
       sessions: [],
-      attendance: [],
+      attendance: [], 
       tasks: [],
       task_assignees: [],
       reports: []
@@ -646,7 +281,7 @@
             .select('*')
             .eq('id', session.user.id)
             .single();
-
+          
           if (memberData) {
             currentUser = { role: memberData.role, id: memberData.id, name: memberData.name };
           } else {
@@ -655,7 +290,7 @@
         } else {
           currentUser = { role: 'none', id: null, name: '' };
         }
-
+        
         applyRole();
         await fetchData(); // Fetch data based on new permissions
       });
@@ -672,11 +307,11 @@
       let s = 'View Only';
       if (currentUser.role === 'admin') s = '👑 Admin';
       else if (currentUser.role === 'member') s = `👤 ${currentUser.name}`;
-
+      
       document.getElementById('user-status').textContent = s;
       document.getElementById('login-btn').style.display = currentUser.role === 'none' ? 'inline-block' : 'none';
       document.getElementById('logout-btn').style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
-
+      
       if (currentUser.role === 'none') switchTab('dashboard');
     }
 
@@ -692,7 +327,7 @@
         const email = document.getElementById('log-email').value.trim();
         const password = document.getElementById('log-pwd').value;
         if (!email || !password) { alert('Enter email and password'); return false; }
-
+        
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) {
           alert('Login failed: ' + error.message);
@@ -717,8 +352,8 @@
       try {
         // Fetch all relational tables simultaneously
         const [
-          { data: overview }, { data: phases }, { data: members },
-          { data: sessions }, { data: attendance }, { data: tasks },
+          { data: overview }, { data: phases }, { data: members }, 
+          { data: sessions }, { data: attendance }, { data: tasks }, 
           { data: assignees }, { data: reports }
         ] = await Promise.all([
           sb.from('project_overview').select('*').eq('id', 1).single(),
@@ -818,14 +453,14 @@
           const assignedMids = state.task_assignees.filter(a => a.task_id === t.id).map(a => a.member_id);
           const isAssigned = assignedMids.includes(currentUser.id);
           const canEdit = currentUser.role === 'admin' || (currentUser.role === 'member' && isAssigned && !ph.locked);
-
-          const mN = assignedMids.map(id => {
-            const member = state.members.find(x => x.id === id); return member ? formatName(member) : '';
+          
+          const mN = assignedMids.map(id => { 
+            const member = state.members.find(x => x.id === id); return member ? formatName(member) : ''; 
           }).filter(Boolean).join(', ');
-
+          
           const opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
           const fileInfo = t.file_name ? `<a href="${t.file_url}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
-
+          
           h += `<tr>
             <td><div style="font-weight:600; margin-bottom:4px">${esc(t.description)}</div></td>
             <td><span class="text-muted" style="font-size:12px">${mN || 'None'}</span></td>
@@ -850,7 +485,7 @@
         const canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
         const opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
         const rFileInfo = r.file_name ? `<a href="${r.file_url}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
-
+        
         rH += `<tr>
           <td style="font-weight:600">${esc(r.report_type)}</td>
           <td>${rFileInfo}<br>${canEdit ? `<input type="file" onchange="uploadFile('reports', '${esc(r.id)}', this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}</td>
@@ -878,26 +513,26 @@
       document.getElementById('certs-table').innerHTML = cH;
 
       // Admin phases
-      document.getElementById('phases-table').innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` +
+      document.getElementById('phases-table').innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` + 
         state.phases.map(p => `<tr><td>${esc(p.name)}</td><td>${p.locked ? '🔒 Locked' : '🔓 Open'}</td>
           <td><button class="btn btn-sm" onclick="updRecord('phases','${esc(p.id)}','locked',${!p.locked})">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delRecord('phases','${esc(p.id)}')">Del</button></td></tr>`).join('');
     }
 
     // ─── Database Actions (Direct DB Updates) ────────────────────────────────────
 
-    window.editOverview = function () {
+    window.editOverview = function() {
       if (currentUser.role !== 'admin') return;
       openModal('Edit Project Overview', `
         <div class="form-group"><label>Overview Content</label>
         <textarea id="ov-text" rows="10" style="min-height:200px">${esc(state.overview)}</textarea></div>
-      `, async () => {
+      `, async () => { 
         const txt = document.getElementById('ov-text').value;
         const { error } = await sb.from('project_overview').upsert({ id: 1, content: txt });
-        if (error) alert(error.message); else fetchData();
+        if(error) alert(error.message); else fetchData(); 
       });
     };
 
-    window.addPhase = async function () {
+    window.addPhase = async function() {
       if (currentUser.role !== 'admin') return;
       const n = prompt('Phase name:');
       if (n) {
@@ -906,7 +541,7 @@
       }
     };
 
-    window.addReport = async function () {
+    window.addReport = async function() {
       if (currentUser.role !== 'admin') return;
       const n = prompt('Report Title (e.g. Methodology):');
       if (n) {
@@ -915,36 +550,36 @@
       }
     };
 
-    window.manageSessions = function () {
+    window.manageSessions = function() {
       if (currentUser.role !== 'admin') return;
       const html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
         <span>${esc(s.label)} ${s.active ? '<span style="color:var(--success)">● Active</span>' : ''}</span>
         <div class="flex-gap">
           <button class="btn btn-sm" onclick="updRecord('sessions','${esc(s.id)}','active',${!s.active}); closeModal();">Toggle Active</button>
           <button class="btn btn-sm btn-danger" onclick="delRecord('sessions','${esc(s.id)}'); closeModal();">Del</button>
-        </div></div>`).join('') +
+        </div></div>`).join('') + 
         `<div style="margin-top:1rem;"><input type="text" id="ns-name" placeholder="New session name">
          <button class="btn btn-primary" style="margin-top:0.5rem; width:100%" onclick="addNewSession()">+ Create Session</button></div>`;
-      openModal('Manage Sessions', html, () => { });
+      openModal('Manage Sessions', html, () => {});
     };
 
-    window.addNewSession = async function () {
+    window.addNewSession = async function() {
       const n = document.getElementById('ns-name').value;
-      if (n) {
+      if(n) {
         await sb.from('sessions').update({ active: false }).neq('id', '00000000-0000-0000-0000-000000000000'); // Deactivate others
         await sb.from('sessions').insert({ label: n, active: true });
         closeModal(); fetchData(); manageSessions();
       }
     }
 
-    window.memberSignIn = async function () {
+    window.memberSignIn = async function() {
       const act = state.sessions.find(s => s.active);
       if (!act) return;
       const { error } = await sb.from('attendance_records').upsert({ session_id: act.id, member_id: currentUser.id, status: 'present' });
-      if (error) alert(error.message); else { alert('Signed in successfully!'); fetchData(); }
+      if(error) alert(error.message); else { alert('Signed in successfully!'); fetchData(); }
     };
 
-    window.togAtt = async function (mid, sid) {
+    window.togAtt = async function(mid, sid) {
       if (currentUser.role !== 'admin') return;
       const rec = state.attendance.find(a => a.member_id === mid && a.session_id === sid);
       const curr = rec ? rec.status : 'none';
@@ -953,7 +588,7 @@
       fetchData();
     };
 
-    window.openTaskModal = function () {
+    window.openTaskModal = function() {
       if (currentUser.role !== 'admin') return;
       const mO = state.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
       const pO = state.phases.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
@@ -966,13 +601,13 @@
         const phaseId = document.getElementById('tm-ph').value;
         const mids = Array.from(document.getElementById('tm-mids').selectedOptions).map(x => x.value);
         if (!desc) { alert('Description required'); return false; }
-
+        
         // Insert task
         const { data: newTask, error } = await sb.from('tasks').insert({ description: desc, phase_id: phaseId }).select().single();
-        if (error) { alert(error.message); return false; }
-
+        if(error) { alert(error.message); return false; }
+        
         // Insert assignees
-        if (mids.length > 0) {
+        if(mids.length > 0) {
           const assignData = mids.map(mid => ({ task_id: newTask.id, member_id: mid }));
           await sb.from('task_assignees').insert(assignData);
         }
@@ -981,38 +616,38 @@
     };
 
     // Generic update/delete handlers
-    window.updRecord = async function (table, id, field, val) {
+    window.updRecord = async function(table, id, field, val) {
       const { error } = await sb.from(table).update({ [field]: val }).eq('id', id);
-      if (error) alert(error.message); else fetchData();
+      if(error) alert(error.message); else fetchData();
     };
 
-    window.delRecord = async function (table, id) {
-      if (!confirm('Delete this item?')) return;
+    window.delRecord = async function(table, id) {
+      if(!confirm('Delete this item?')) return;
       const { error } = await sb.from(table).delete().eq('id', id);
-      if (error) alert(error.message); else fetchData();
+      if(error) alert(error.message); else fetchData();
     };
 
     // ─── Secure File Uploads ─────────────────────────────────────────────────────
-    window.uploadFile = async function (table, recordId, input) {
+    window.uploadFile = async function(table, recordId, input) {
       if (!input.files || !input.files[0]) return;
       const file = input.files[0];
       input.disabled = true;
-
+      
       try {
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const path = `${table}/${Date.now()}_${safeName}`;
-
+        
         const { error: uploadError } = await sb.storage.from('uploads').upload(path, file);
         if (uploadError) throw uploadError;
-
+        
         const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
-
+        
         // Update the record in the DB with the file info
         await sb.from(table).update({ file_url: urlData.publicUrl, file_name: file.name }).eq('id', recordId);
-
+        
         fetchData();
-      } catch (e) {
-        alert('Upload failed: ' + e.message);
+      } catch (e) { 
+        alert('Upload failed: ' + e.message); 
         input.disabled = false;
       }
     };
@@ -1047,5 +682,4 @@
     init();
   </script>
 </body>
-
 </html>
