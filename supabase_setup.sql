@@ -112,6 +112,34 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
+CREATE OR REPLACE FUNCTION public.prevent_unauthorized_task_updates() RETURNS trigger AS $$
+BEGIN
+  IF (SELECT role FROM public.members WHERE id = auth.uid()) != 'admin' THEN
+    IF NEW.description IS DISTINCT FROM OLD.description OR NEW.phase_id IS DISTINCT FROM OLD.phase_id THEN
+      RAISE EXCEPTION 'Only admins can modify task description or phase';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS task_update_guard ON public.tasks;
+CREATE TRIGGER task_update_guard BEFORE UPDATE ON public.tasks FOR EACH ROW EXECUTE PROCEDURE public.prevent_unauthorized_task_updates();
+
+CREATE OR REPLACE FUNCTION public.prevent_unauthorized_report_updates() RETURNS trigger AS $$
+BEGIN
+  IF (SELECT role FROM public.members WHERE id = auth.uid()) != 'admin' THEN
+    IF NEW.report_type IS DISTINCT FROM OLD.report_type THEN
+      RAISE EXCEPTION 'Only admins can modify report titles';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS report_update_guard ON public.reports;
+CREATE TRIGGER report_update_guard BEFORE UPDATE ON public.reports FOR EACH ROW EXECUTE PROCEDURE public.prevent_unauthorized_report_updates();
+
 -- ========================================================================================
 -- PHASE 4: SECURE POLICIES
 -- ========================================================================================
@@ -132,8 +160,6 @@ CREATE POLICY "Auth users can view assignees" ON task_assignees FOR SELECT TO au
 CREATE POLICY "Auth users can view reports" ON reports FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Auth users can view sessions" ON sessions FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Auth users can view attendance" ON attendance_records FOR SELECT TO authenticated USING (true);
-
-CREATE POLICY "Users can update own profile" ON members FOR UPDATE TO authenticated USING (id = auth.uid()) WITH CHECK (id = auth.uid());
 CREATE POLICY "Admins update overview" ON project_overview FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
 CREATE POLICY "Admins manage phases" ON phases FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
 CREATE POLICY "Admins manage tasks" ON tasks FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
@@ -144,16 +170,14 @@ CREATE POLICY "Admins manage reports" ON reports FOR INSERT TO authenticated WIT
 CREATE POLICY "Admins delete reports" ON reports FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
 CREATE POLICY "Admins manage sessions" ON sessions FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
 CREATE POLICY "Admins manage all attendance" ON attendance_records FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
-CREATE POLICY "Members log own attendance" ON attendance_records FOR INSERT TO authenticated WITH CHECK (member_id = auth.uid());
-CREATE POLICY "Members update own attendance" ON attendance_records FOR UPDATE TO authenticated USING (member_id = auth.uid()) WITH CHECK (member_id = auth.uid());
+CREATE POLICY "Members log own attendance" ON attendance_records FOR INSERT TO authenticated WITH CHECK (member_id = auth.uid() AND EXISTS (SELECT 1 FROM sessions WHERE id = session_id AND active = true));
+CREATE POLICY "Members update own attendance" ON attendance_records FOR UPDATE TO authenticated USING (member_id = auth.uid() AND EXISTS (SELECT 1 FROM sessions WHERE id = session_id AND active = true)) WITH CHECK (member_id = auth.uid() AND EXISTS (SELECT 1 FROM sessions WHERE id = session_id AND active = true));
 
 INSERT INTO storage.buckets (id, name, public) VALUES ('uploads', 'uploads', true) ON CONFLICT (id) DO NOTHING;
 DROP POLICY IF EXISTS "Public read uploads" ON storage.objects;
 DROP POLICY IF EXISTS "Auth users upload files" ON storage.objects;
-DROP POLICY IF EXISTS "Auth users update files" ON storage.objects;
 DROP POLICY IF EXISTS "Only admins delete files" ON storage.objects;
 
 CREATE POLICY "Public read uploads" ON storage.objects FOR SELECT TO public USING (bucket_id = 'uploads');
 CREATE POLICY "Auth users upload files" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'uploads');
-CREATE POLICY "Auth users update files" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'uploads');
 CREATE POLICY "Only admins delete files" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'uploads' AND EXISTS (SELECT 1 FROM public.members WHERE id = auth.uid() AND role = 'admin'));

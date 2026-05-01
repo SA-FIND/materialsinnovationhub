@@ -794,6 +794,11 @@
       if (s == null) return '';
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
+    function safeUrl(u) {
+      if (!u) return '#';
+      if (u.startsWith('http://') || u.startsWith('https://')) return esc(u);
+      return '#';
+    }
     function formatName(m) {
       if (!m) return '';
       return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
@@ -849,7 +854,7 @@
           }).filter(Boolean).join(', ');
 
           const opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
-          const fileInfo = t.file_name ? `<a href="${t.file_url}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+          const fileInfo = t.file_name ? `<a href="${safeUrl(t.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
 
           h += `<tr>
             <td><div style="font-weight:600; margin-bottom:4px">${esc(t.description)}</div></td>
@@ -874,7 +879,7 @@
       state.reports.forEach(r => {
         const canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
         const opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
-        const rFileInfo = r.file_name ? `<a href="${r.file_url}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+        const rFileInfo = r.file_name ? `<a href="${safeUrl(r.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
 
         rH += `<tr>
           <td style="font-weight:600">${esc(r.report_type)}</td>
