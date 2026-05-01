@@ -464,6 +464,7 @@
         <div class="badge warning" style="font-size: 11px;">⏰ Deadline: Friday 11:59 PM</div>
         <button class="btn" onclick="toggleTheme()">🌓 Theme</button>
         <span id="user-status" style="font-weight: 600; margin-left: 1rem;">View Only</span>
+        <button class="btn" id="change-pwd-btn" style="display:none; margin-left: 0.5rem;" onclick="promptSetPassword()">Set Password</button>
         <button class="btn btn-primary" id="login-btn" onclick="openLogin()">Login</button>
         <button class="btn" id="logout-btn" style="display:none;" onclick="logout()">Logout</button>
       </div>
@@ -631,6 +632,11 @@
 
     // ─── Initialization & Auth Listener ──────────────────────────────────────────
     async function init() {
+      // Check for invite or recovery links in URL
+      if (window.location.hash.includes('type=invite') || window.location.hash.includes('type=recovery') || window.location.search.includes('type=invite')) {
+        setTimeout(() => promptSetPassword(), 1000);
+      }
+
       // Load saved theme
       const savedTheme = localStorage.getItem('mih_theme');
       if (savedTheme) {
@@ -676,11 +682,30 @@
       document.getElementById('user-status').textContent = s;
       document.getElementById('login-btn').style.display = currentUser.role === 'none' ? 'inline-block' : 'none';
       document.getElementById('logout-btn').style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
+      document.getElementById('change-pwd-btn').style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
 
       if (currentUser.role === 'none') switchTab('dashboard');
     }
 
     // ─── Auth Functions ──────────────────────────────────────────────────────────
+    function promptSetPassword() {
+      const html = `
+        <div class="form-group"><label for="new-pwd">New Password</label><input type="password" id="new-pwd" placeholder="Enter new password (min 6 chars)"></div>
+      `;
+      openModal('Set Your Password', html, async () => {
+        const password = document.getElementById('new-pwd').value;
+        if (!password || password.length < 6) { alert('Password must be at least 6 characters'); return false; }
+        
+        const { error } = await sb.auth.updateUser({ password: password });
+        if (error) {
+          alert('Failed to set password: ' + error.message);
+          return false;
+        }
+        alert('Password successfully set!');
+        return true; 
+      });
+    }
+
     function openLogin() {
       const html = `
         <div id="log-box">
