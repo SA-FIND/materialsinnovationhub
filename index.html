@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self';">
   <title>Materials Innovation Hub</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -319,8 +319,8 @@
     function openLogin() {
       const html = `
         <div id="log-box">
-          <div class="form-group"><label>Email</label><input type="email" id="log-email" placeholder="Email address"></div>
-          <div class="form-group"><label>Password</label><input type="password" id="log-pwd" placeholder="Password"></div>
+          <div class="form-group"><label for="log-email">Email</label><input type="email" id="log-email" placeholder="Email address"></div>
+          <div class="form-group"><label for="log-pwd">Password</label><input type="password" id="log-pwd" placeholder="Password"></div>
         </div>`;
 
       openModal('Login', html, async () => {
@@ -523,7 +523,7 @@
     window.editOverview = function() {
       if (currentUser.role !== 'admin') return;
       openModal('Edit Project Overview', `
-        <div class="form-group"><label>Overview Content</label>
+        <div class="form-group"><label for="ov-text">Overview Content</label>
         <textarea id="ov-text" rows="10" style="min-height:200px">${esc(state.overview)}</textarea></div>
       `, async () => { 
         const txt = document.getElementById('ov-text').value;
@@ -558,7 +558,7 @@
           <button class="btn btn-sm" onclick="updRecord('sessions','${esc(s.id)}','active',${!s.active}); closeModal();">Toggle Active</button>
           <button class="btn btn-sm btn-danger" onclick="delRecord('sessions','${esc(s.id)}'); closeModal();">Del</button>
         </div></div>`).join('') + 
-        `<div style="margin-top:1rem;"><input type="text" id="ns-name" placeholder="New session name">
+        `<div style="margin-top:1rem;"><label for="ns-name" style="display:none;">New session name</label><input type="text" id="ns-name" placeholder="New session name">
          <button class="btn btn-primary" style="margin-top:0.5rem; width:100%" onclick="addNewSession()">+ Create Session</button></div>`;
       openModal('Manage Sessions', html, () => {});
     };
@@ -593,9 +593,9 @@
       const mO = state.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
       const pO = state.phases.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
       openModal('New Task', `
-        <div class="form-group"><label>Description</label><input type="text" id="tm-desc"></div>
-        <div class="form-group"><label>Phase</label><select id="tm-ph">${pO}</select></div>
-        <div class="form-group"><label>Assignees (Ctrl/Cmd+Click for multiple)</label><select id="tm-mids" multiple size="4">${mO}</select></div>
+        <div class="form-group"><label for="tm-desc">Description</label><input type="text" id="tm-desc"></div>
+        <div class="form-group"><label for="tm-ph">Phase</label><select id="tm-ph">${pO}</select></div>
+        <div class="form-group"><label for="tm-mids">Assignees (Ctrl/Cmd+Click for multiple)</label><select id="tm-mids" multiple size="4">${mO}</select></div>
       `, async () => {
         const desc = document.getElementById('tm-desc').value;
         const phaseId = document.getElementById('tm-ph').value;
