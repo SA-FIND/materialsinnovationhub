@@ -597,13 +597,6 @@
         </div>
         <table id="phases-table"></table>
       </div>
-      <div class="glass-panel">
-        <div class="flex-between">
-          <h3>Team Management</h3>
-          <button class="btn btn-primary" onclick="inviteMember()">Invite Member</button>
-        </div>
-        <p class="text-muted" style="font-size: 12px;">Add members to the project via their email address.</p>
-      </div>
     </div>
 
   </div>
@@ -747,14 +740,6 @@
     }
 
     async function logout() { await sb.auth.signOut(); }
-
-    async function inviteMember() {
-      const email = prompt('Enter the email address to invite:');
-      if (!email) return;
-      // In Supabase, the best way to invite users from the client is using reset password logic
-      // For a simpler setup, admins can add users via the Supabase Dashboard.
-      alert('To maintain strict security, please invite new users via the Supabase Authentication Dashboard.');
-    }
 
     // ─── Data Fetching ───────────────────────────────────────────────────────────
     async function fetchData() {
@@ -985,8 +970,9 @@
         <textarea id="ov-text" rows="10" style="min-height:200px">${esc(state.overview)}</textarea></div>
       `, async () => {
         const txt = document.getElementById('ov-text').value;
-        const { error } = await sb.from('project_overview').upsert({ id: 1, content: txt });
-        if (error) alert(error.message); else fetchData();
+        const { error } = await sb.from('project_overview').update({ content: txt }).eq('id', 1);
+        if (error) { alert(error.message); return false; }
+        await fetchData();
       });
     };
 
@@ -994,8 +980,9 @@
       if (currentUser.role !== 'admin') return;
       const n = prompt('Phase name:');
       if (n) {
-        await sb.from('phases').insert({ name: n });
-        fetchData();
+        const { error } = await sb.from('phases').insert({ name: n });
+        if (error) alert('Error: ' + error.message);
+        else await fetchData();
       }
     };
 
@@ -1003,8 +990,9 @@
       if (currentUser.role !== 'admin') return;
       const n = prompt('Report Title (e.g. Methodology):');
       if (n) {
-        await sb.from('reports').insert({ report_type: n });
-        fetchData();
+        const { error } = await sb.from('reports').insert({ report_type: n });
+        if (error) alert('Error: ' + error.message);
+        else await fetchData();
       }
     };
 
@@ -1025,8 +1013,11 @@
       const n = document.getElementById('ns-name').value;
       if (n) {
         await sb.from('sessions').update({ active: false }).neq('id', '00000000-0000-0000-0000-000000000000'); // Deactivate others
-        await sb.from('sessions').insert({ label: n, active: true });
-        closeModal(); fetchData(); manageSessions();
+        const { error } = await sb.from('sessions').insert({ label: n, active: true });
+        if (error) { alert('Error: ' + error.message); return; }
+        closeModal();
+        await fetchData();
+        manageSessions();
       }
     }
 
@@ -1042,8 +1033,9 @@
       const rec = state.attendance.find(a => a.member_id === mid && a.session_id === sid);
       const curr = rec ? rec.status : 'none';
       const nxt = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
-      await sb.from('attendance_records').upsert({ session_id: sid, member_id: mid, status: nxt });
-      fetchData();
+      const { error } = await sb.from('attendance_records').upsert({ session_id: sid, member_id: mid, status: nxt });
+      if (error) alert('Error: ' + error.message);
+      else await fetchData();
     };
 
     window.openTaskModal = function () {
@@ -1062,27 +1054,30 @@
 
         // Insert task
         const { data: newTask, error } = await sb.from('tasks').insert({ description: desc, phase_id: phaseId }).select().single();
-        if (error) { alert(error.message); return false; }
+        if (error) { alert('Error inserting task: ' + error.message); return false; }
 
         // Insert assignees
         if (mids.length > 0) {
           const assignData = mids.map(mid => ({ task_id: newTask.id, member_id: mid }));
-          await sb.from('task_assignees').insert(assignData);
+          const { error: assignError } = await sb.from('task_assignees').insert(assignData);
+          if (assignError) alert('Error assigning members: ' + assignError.message);
         }
-        fetchData();
+        await fetchData();
       });
     };
 
     // Generic update/delete handlers
     window.updRecord = async function (table, id, field, val) {
       const { error } = await sb.from(table).update({ [field]: val }).eq('id', id);
-      if (error) alert(error.message); else fetchData();
+      if (error) alert('Error updating record: ' + error.message);
+      else await fetchData();
     };
 
     window.delRecord = async function (table, id) {
       if (!confirm('Delete this item?')) return;
       const { error } = await sb.from(table).delete().eq('id', id);
-      if (error) alert(error.message); else fetchData();
+      if (error) alert('Error deleting record: ' + error.message);
+      else await fetchData();
     };
 
     // ─── Secure File Uploads ─────────────────────────────────────────────────────
