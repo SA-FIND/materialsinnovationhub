@@ -702,14 +702,18 @@
     function promptSetPassword() {
       const html = `
         <div class="form-group"><label for="new-pwd">New Password</label><input type="password" id="new-pwd" placeholder="Enter new password (min 6 chars)"></div>
+        <div id="pwd-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
       `;
       openModal('Set Your Password', html, async () => {
+        const errDiv = document.getElementById('pwd-error');
+        errDiv.textContent = '';
         const password = document.getElementById('new-pwd').value;
-        if (!password || password.length < 6) { alert('Password must be at least 6 characters'); return false; }
+        if (!password || password.length < 6) { errDiv.textContent = 'Password must be at least 6 characters'; return false; }
         
+        errDiv.textContent = 'Saving...';
         const { error } = await sb.auth.updateUser({ password: password });
         if (error) {
-          alert('Failed to set password: ' + error.message);
+          errDiv.textContent = 'Failed to set password: ' + error.message;
           return false;
         }
         alert('Password successfully set!');
@@ -722,16 +726,20 @@
         <div id="log-box">
           <div class="form-group"><label for="log-email">Email</label><input type="email" id="log-email" placeholder="Email address"></div>
           <div class="form-group"><label for="log-pwd">Password</label><input type="password" id="log-pwd" placeholder="Password"></div>
+          <div id="login-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
         </div>`;
 
       openModal('Login', html, async () => {
+        const errDiv = document.getElementById('login-error');
+        errDiv.textContent = '';
         const email = document.getElementById('log-email').value.trim();
         const password = document.getElementById('log-pwd').value;
-        if (!email || !password) { alert('Enter email and password'); return false; }
+        if (!email || !password) { errDiv.textContent = 'Enter email and password'; return false; }
 
+        errDiv.textContent = 'Logging in...';
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) {
-          alert('Login failed: ' + error.message);
+          errDiv.textContent = 'Login failed: ' + error.message;
           return false;
         }
         return true; // Closes modal
