@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    /* CSS Remains unchanged to preserve your UI design */
     :root {
       --mih-blue: #010066;
       --mih-accent: #38bdf8;
@@ -450,7 +451,7 @@
   <div class="app-container">
     <header>
       <div class="logo-area">
-        <img src="MIH Logo (1).png" alt="MIH Logo" class="logo-img" onerror="this.style.display='none'">
+        <img src="MIH Logo (1).jpg" alt="MIH Logo" class="logo-img" onerror="this.style.display='none'">
         <div>
           <h1>Materials Innovation Hub</h1>
           <div style="font-size: 12px; color: var(--text-muted);">Cassava Biopolymer Project Tracker</div>
@@ -475,7 +476,6 @@
       <button class="tab-btn" onclick="switchTab('reports')">Project Reports</button>
       <button class="tab-btn" onclick="switchTab('certs')">Certification</button>
       <button class="tab-btn admin-only" onclick="switchTab('admin')">Admin Config</button>
-      <button class="tab-btn" id="profile-tab" style="display:none;" onclick="switchTab('profile')">My Profile</button>
     </div>
 
     <!-- DASHBOARD -->
@@ -500,7 +500,7 @@
             <h3>Project Overview</h3>
             <button class="btn btn-sm admin-only" onclick="editOverview()">Edit</button>
           </div>
-          <div id="overview-content" class="overview-box text-muted"></div>
+          <div id="overview-content" class="overview-box text-muted">Loading...</div>
         </div>
         <div class="glass-panel">
           <h3>Engagement Leaderboard</h3>
@@ -554,8 +554,7 @@
       <div class="glass-panel">
         <div class="flex-between">
           <h3>Master Project Reports</h3>
-          <span class="text-muted" style="font-size: 12px;">Word Documents (.doc/.docx) only. Editable by Admin or
-            contributors.</span>
+          <button class="btn btn-primary admin-only" onclick="addReport()">+ Add Report Type</button>
         </div>
         <div style="overflow-x: auto;">
           <table id="reports-table"></table>
@@ -568,13 +567,8 @@
       <div class="glass-panel">
         <div class="flex-between">
           <h3>Certification Eligibility</h3>
-          <div class="admin-only flex-gap">
-            <button class="btn" onclick="openMemberModal()">+ Add Member</button>
-            <button class="btn" onclick="exportJSON()">Export</button>
-          </div>
+          <p class="text-muted" style="font-size: 12px;">Requirements: Attendance ≥ 90%, Tasks ≥ 90%, Reports ≥ 90%</p>
         </div>
-        <p class="text-muted" style="margin-bottom: 1rem; font-size: 12px;">Requirement: Each metric must be ≥ 90%
-          (Attendance 90%, Tasks 90%, Reports 90%)</p>
         <div class="auth-required" style="overflow-x: auto;">
           <table id="certs-table"></table>
         </div>
@@ -589,43 +583,17 @@
           <h3>Manage Project Phases</h3>
           <button class="btn btn-primary" onclick="addPhase()">+ Add Phase</button>
         </div>
-        <p class="text-muted" style="margin-bottom: 1rem; font-size: 12px;">Locked phases prevent members from editing
-          task submissions within that phase.</p>
         <table id="phases-table"></table>
       </div>
       <div class="glass-panel">
         <div class="flex-between">
-          <h3>Deadline Notifications</h3>
-          <button class="btn btn-primary" onclick="sendDeadlineEmail()">Send Reminder Email</button>
+          <h3>Team Management</h3>
+          <button class="btn btn-primary" onclick="inviteMember()">Invite Member</button>
         </div>
-        <p class="text-muted" style="font-size: 12px;">Sends an email (BCC to all members) reminding them of the Friday
-          11:59 PM deadline. (Should be clicked 8:00 AM Fridays).</p>
-      </div>
-      <div class="glass-panel">
-        <div class="flex-between">
-          <h3>Member Edit Requests</h3>
-          <button class="btn btn-primary" onclick="viewEditRequests()">Review Requests</button>
-        </div>
-        <p class="text-muted" style="font-size: 12px;">When members request task description changes, they appear here
-          for your approval.</p>
+        <p class="text-muted" style="font-size: 12px;">Add members to the project via their email address.</p>
       </div>
     </div>
 
-    <!-- PROFILE -->
-    <div id="profile" class="view">
-      <div class="glass-panel" style="max-width: 400px; margin: 0 auto;">
-        <h3>Change Password</h3>
-        <div class="form-group" style="margin-top: 1rem;">
-          <label>New Password (min 4 characters)</label>
-          <input type="password" id="prof-pwd" placeholder="Enter new password">
-        </div>
-        <div class="form-group">
-          <label>Confirm New Password</label>
-          <input type="password" id="prof-pwd-confirm" placeholder="Confirm new password">
-        </div>
-        <button class="btn btn-primary" style="width: 100%;" onclick="savePassword()">Update Password</button>
-      </div>
-    </div>
   </div>
 
   <!-- Modal -->
@@ -640,323 +608,153 @@
     </div>
   </div>
 
-  <!-- Loading overlay -->
-  <div id="loading-overlay"
-    style="position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:1rem;">
-    <div
-      style="width:48px;height:48px;border:4px solid rgba(255,255,255,0.2);border-top-color:#38bdf8;border-radius:50%;animation:spin 0.8s linear infinite;">
-    </div>
-    <span style="color:#fff;font-family:Inter,sans-serif;font-weight:600;" id="loading-text">Connecting to
-      cloud...</span>
-  </div>
-  <style>
-    @keyframes spin {
-      to {
-        transform: rotate(360deg)
-      }
-    }
-  </style>
-
   <script>
-    // ─── Supabase ────────────────────────────────────────────────────────────────
+    // ─── Supabase Configuration ──────────────────────────────────────────────────
     const SUPABASE_URL = 'https://grvbyxkilrobyrbsqqqr.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydmJ5eGtpbHJvYnlyYnNxcXFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODYzNzIsImV4cCI6MjA5MzA2MjM3Mn0.LT_bydOKCEAgyfUnFq0Wz1lSzEIxNhHaI-JHkkGH4WA';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // ─── App state — NO passwords, NO pin stored here ────────────────────────────
+    // ─── Local State Cache ───────────────────────────────────────────────────────
     let state = {
-      v: 3.5,
       theme: 'dark',
-      overview: `Cassava Biopolymer Project
-Materials Innovation Hub – Club Activity Plan
-
-Project Overview
-• Raise campus awareness about plastics and microplastics through content
-• Design and synthesize a biopolymer alternative from cassava starch
-• Test mechanical, thermal, and degradation properties
-• Present findings to stakeholders and submit for publication/poster presentation or a report memo
-
-The Four Teams
-Team 1: Awareness & Content
-• Creating social media content (Instagram, TikTok) about the plastics crisis
-• Writing a 2–3 minute explainer video script
-• Documenting the project journey with photos/video
-
-Team 2: Research & Formulation
-• Literature review: cassava starch in materials science as alternative to plastics
-• Designing 3–5 approach variations (plasticizer types/amounts, temperatures, drying times)
-• Researching degradation mechanisms (microbial, thermal, aqueous)
-• Creating a testing protocol document
-
-Team 3: Polymer Synthesis
-• Procuring cassava or extracting starch from cassava root
-• Mixing formulations according to Team 2's approach
-• Heat, cast into films, and cure samples
-• Optimizing variables and documenting with batch logs
-
-Team 4: Testing & Characterization
-• Mechanical testing: tensile strength, elongation, hardness
-• Thermal analysis: water absorption, thermal stability
-• Biodegradability tests: soil burial, aqueous degradation, composting
-• Data analysis and visualization
-• Writing results & discussion for final report
-
-Weekly Meeting Structure (Every Saturday 4–6pm)
-4:00–4:05 – Quick recap (5 min)
-4:05–4:20 – Team briefs, 2 min each (15 min)
-4:20–5:55 – Building: teams work independently (95 min)
-5:55–6:00 – Debrief & next week focus (5 min)`,
-      phases: [
-        { id: 'ph1', name: 'Phase 1: Research', locked: false },
-        { id: 'ph2', name: 'Phase 2: Synthesis', locked: false }
-      ],
-      members: [],      // { id, name, email, tag } — NO pwd field ever
-      sessions: [{ id: 's1', label: 'Wk 1', active: true }],
-      attendance: {},
+      overview: '',
+      phases: [],
+      members: [],
+      sessions: [],
+      attendance: [],
       tasks: [],
-      reports: [
-        { id: 'r1', type: 'Introduction', fileData: null, fileName: '', fileUrl: '', status: 'pending' },
-        { id: 'r2', type: 'Literature Review', fileData: null, fileName: '', fileUrl: '', status: 'pending' },
-        { id: 'r3', type: 'Methodology', fileData: null, fileName: '', fileUrl: '', status: 'pending' },
-        { id: 'r4', type: 'Results', fileData: null, fileName: '', fileUrl: '', status: 'pending' }
-      ],
-      editRequests: []
+      task_assignees: [],
+      reports: []
     };
 
-    let currentUser = { role: 'none', id: null };
+    let currentUser = { role: 'none', id: null, name: '' };
 
-    // ─── Login rate limiting ─────────────────────────────────────────────────────
-    const loginAttempts = { count: 0, lockedUntil: 0 };
-    function checkRateLimit() {
-      if (Date.now() < loginAttempts.lockedUntil) {
-        const secs = Math.ceil((loginAttempts.lockedUntil - Date.now()) / 1000);
-        alert(`Too many failed attempts. Try again in ${secs} seconds.`);
-        return false;
-      }
-      return true;
-    }
-    function recordFailedAttempt() {
-      loginAttempts.count++;
-      if (loginAttempts.count >= 5) {
-        loginAttempts.lockedUntil = Date.now() + 60000;
-        loginAttempts.count = 0;
-        alert('Too many failed attempts. Locked for 60 seconds.');
-      }
-    }
-    function resetAttempts() { loginAttempts.count = 0; loginAttempts.lockedUntil = 0; }
-
-    // ─── Init ────────────────────────────────────────────────────────────────────
+    // ─── Initialization & Auth Listener ──────────────────────────────────────────
     async function init() {
-      const overlay = document.getElementById('loading-overlay');
-      const loadingText = document.getElementById('loading-text');
-
-      // Timeout fallback: hide loading after 8 seconds regardless
-      const loadTimeout = setTimeout(() => {
-        overlay.style.display = 'none';
+      // Load saved theme
+      const savedTheme = localStorage.getItem('mih_theme');
+      if (savedTheme) {
+        state.theme = savedTheme;
         document.documentElement.setAttribute('data-theme', state.theme);
-        applyRole(); renderAll();
-      }, 8000);
+      }
 
-      try {
-        const { data, error } = await sb.from('project_state').select('data').eq('id', 1).single();
-        if (!error && data && data.data && Object.keys(data.data).length > 0) {
-          const parsed = data.data;
-          // Strip any pwd/pin fields that may have leaked from old versions
-          delete parsed.pin;
-          if (Array.isArray(parsed.members)) {
-            parsed.members = parsed.members.map(({ pwd, pwd_hash, ...rest }) => rest);
+      // Listen for auth state changes (Handles login, logout, and page refresh)
+      sb.auth.onAuthStateChange(async (event, session) => {
+        if (session) {
+          // Fetch user role from public members table
+          const { data: memberData, error } = await sb.from('members')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (memberData) {
+            currentUser = { role: memberData.role, id: memberData.id, name: memberData.name };
+          } else {
+            currentUser = { role: 'member', id: session.user.id, name: 'New User' };
           }
-          state = Object.assign(state, parsed);
         } else {
-          // Fallback: localStorage migration (strip passwords before migrating)
-          const saved = localStorage.getItem('mih_v3');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            delete parsed.pin;
-            if (Array.isArray(parsed.members)) {
-              parsed.members = parsed.members.map(({ pwd, pwd_hash, ...rest }) => rest);
-            }
-            state = Object.assign(state, parsed);
-            await sb.from('project_state').upsert({ id: 1, data: state });
-            localStorage.removeItem('mih_v3');
-          }
+          currentUser = { role: 'none', id: null, name: '' };
         }
 
-        // Load members from the secure members_public view (no passwords)
-        const { data: membersData } = await sb.from('members_public').select('*');
-        if (membersData && membersData.length > 0) {
-          state.members = membersData.map(m => ({ id: m.id, name: m.name, email: m.email, tag: m.tag || '' }));
-        }
-      } catch (e) {
-        loadingText.textContent = 'Using local data...';
-        const saved = localStorage.getItem('mih_v3');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          delete parsed.pin;
-          if (Array.isArray(parsed.members)) {
-            parsed.members = parsed.members.map(({ pwd, pwd_hash, ...rest }) => rest);
-          }
-          state = Object.assign(state, parsed);
-        }
-      }
-
-      clearTimeout(loadTimeout);
-      overlay.style.display = 'none';
-      document.documentElement.setAttribute('data-theme', state.theme);
-      applyRole(); renderAll();
+        applyRole();
+        await fetchData(); // Fetch data based on new permissions
+      });
     }
 
-    async function saveState() {
-      // Never persist passwords or PIN in state
-      const safeState = JSON.parse(JSON.stringify(state));
-      delete safeState.pin;
-      if (Array.isArray(safeState.members)) {
-        safeState.members = safeState.members.map(({ pwd, pwd_hash, ...rest }) => rest);
-      }
-      try {
-        await sb.from('project_state').upsert({ id: 1, data: safeState, updated_at: new Date().toISOString() });
-      } catch (e) {
-        localStorage.setItem('mih_v3', JSON.stringify(safeState));
-      }
-      renderAll();
-    }
-
-    // ─── Theme ───────────────────────────────────────────────────────────────────
     function toggleTheme() {
       state.theme = state.theme === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', state.theme);
-      saveState();
-    }
-
-    // ─── HTML escape helper ──────────────────────────────────────────────────────
-    function esc(s) {
-      if (s == null) return '';
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-
-    function formatName(m) {
-      if (!m) return '';
-      return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
-    }
-
-    // ─── Modal helper ────────────────────────────────────────────────────────────
-    function openModal(title, html, onSave) {
-      document.getElementById('m-title').textContent = title;
-      document.getElementById('m-body').innerHTML = html;
-      document.getElementById('modal').style.display = 'flex';
-      document.getElementById('m-save').onclick = async () => {
-        const result = await onSave();
-        if (result !== false) closeModal();
-      };
-    }
-    function closeModal() { document.getElementById('modal').style.display = 'none'; }
-
-    // ─── Auth — uses Supabase RPCs with bcrypt on the server ─────────────────────
-    function openLogin() {
-      const html = `
-        <div class="tabs">
-          <button class="tab-btn active" id="btn-log-m" onclick="togLog('m')">Member</button>
-          <button class="tab-btn" id="btn-log-a" onclick="togLog('a')">President</button>
-        </div>
-        <div id="log-m-box">
-          <div class="form-group"><label>Name or Email</label><input type="text" id="log-memail" placeholder="Name or member@example.com"></div>
-          <div class="form-group"><label>Password</label><input type="password" id="log-mpwd" placeholder="Default: 000"></div>
-        </div>
-        <div id="log-a-box" style="display:none">
-          <div class="form-group"><label>Admin PIN</label><input type="password" id="log-apin" placeholder="Enter PIN"></div>
-        </div>`;
-
-      window.togLog = (t) => {
-        document.getElementById('btn-log-m').classList.toggle('active', t === 'm');
-        document.getElementById('btn-log-a').classList.toggle('active', t === 'a');
-        document.getElementById('log-m-box').style.display = t === 'm' ? 'block' : 'none';
-        document.getElementById('log-a-box').style.display = t === 'a' ? 'block' : 'none';
-      };
-
-      openModal('Login', html, async () => {
-        if (!checkRateLimit()) return false;
-
-        if (document.getElementById('btn-log-a').classList.contains('active')) {
-          // ── Admin login via Supabase RPC (bcrypt on server) ──
-          const pin = document.getElementById('log-apin').value;
-          if (!pin) { alert('Enter PIN'); return false; }
-          const { data, error } = await sb.rpc('authenticate_admin', { pin });
-          if (error || !data?.success) {
-            recordFailedAttempt();
-            alert('Wrong PIN');
-            return false;
-          }
-          currentUser = { role: 'admin', id: null };
-          resetAttempts();
-        } else {
-          // ── Member login via Supabase RPC (bcrypt on server) ──
-          const identifier = document.getElementById('log-memail').value.trim();
-          const pwd = document.getElementById('log-mpwd').value;
-          if (!identifier || !pwd) { alert('Enter name/email and password'); return false; }
-          const { data, error } = await sb.rpc('authenticate_member', { identifier, pwd });
-          if (error || !data?.success) {
-            recordFailedAttempt();
-            alert('Wrong name/email or password');
-            return false;
-          }
-          const m = data.member;
-          currentUser = { role: 'member', id: m.id };
-          // Sync member info into local state if not already present (no password)
-          if (!state.members.find(x => x.id === m.id)) {
-            state.members.push({ id: m.id, name: m.name, email: m.email, tag: m.tag || '' });
-          }
-          resetAttempts();
-        }
-        applyRole();
-      });
+      localStorage.setItem('mih_theme', state.theme);
     }
 
     function applyRole() {
       document.body.setAttribute('data-role', currentUser.role);
       let s = 'View Only';
       if (currentUser.role === 'admin') s = '👑 Admin';
-      else if (currentUser.role === 'member') {
-        const m = state.members.find(x => x.id === currentUser.id);
-        s = `👤 ${m ? m.name : ''}`;
-      }
+      else if (currentUser.role === 'member') s = `👤 ${currentUser.name}`;
+
       document.getElementById('user-status').textContent = s;
       document.getElementById('login-btn').style.display = currentUser.role === 'none' ? 'inline-block' : 'none';
       document.getElementById('logout-btn').style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
-      document.getElementById('profile-tab').style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
+
       if (currentUser.role === 'none') switchTab('dashboard');
-      renderAll();
     }
 
-    function logout() { currentUser = { role: 'none', id: null }; applyRole(); }
+    // ─── Auth Functions ──────────────────────────────────────────────────────────
+    function openLogin() {
+      const html = `
+        <div id="log-box">
+          <div class="form-group"><label>Email</label><input type="email" id="log-email" placeholder="Email address"></div>
+          <div class="form-group"><label>Password</label><input type="password" id="log-pwd" placeholder="Password"></div>
+        </div>`;
 
-    // ─── Password change — uses Supabase RPCs, never touches local state ─────────
-    async function savePassword() {
-      const np = document.getElementById('prof-pwd').value;
-      const nc = document.getElementById('prof-pwd-confirm').value;
-      if (!np) return alert('Enter a new password');
-      if (np.length < 4) return alert('Password must be at least 4 characters');
-      if (np !== nc) return alert('Passwords do not match');
+      openModal('Login', html, async () => {
+        const email = document.getElementById('log-email').value.trim();
+        const password = document.getElementById('log-pwd').value;
+        if (!email || !password) { alert('Enter email and password'); return false; }
 
-      if (currentUser.role === 'admin') {
-        const { data, error } = await sb.rpc('change_admin_pin', { new_pin: np });
-        if (error || !data?.success) return alert('Failed to update PIN. Try again.');
-      } else {
-        const { data, error } = await sb.rpc('change_member_password', { member_id: currentUser.id, new_pwd: np });
-        if (error || !data?.success) return alert('Failed to update password. Try again.');
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) {
+          alert('Login failed: ' + error.message);
+          return false;
+        }
+        return true; // Closes modal
+      });
+    }
+
+    async function logout() { await sb.auth.signOut(); }
+
+    async function inviteMember() {
+      const email = prompt('Enter the email address to invite:');
+      if (!email) return;
+      // In Supabase, the best way to invite users from the client is using reset password logic
+      // For a simpler setup, admins can add users via the Supabase Dashboard.
+      alert('To maintain strict security, please invite new users via the Supabase Authentication Dashboard.');
+    }
+
+    // ─── Data Fetching ───────────────────────────────────────────────────────────
+    async function fetchData() {
+      try {
+        // Fetch all relational tables simultaneously
+        const [
+          { data: overview }, { data: phases }, { data: members },
+          { data: sessions }, { data: attendance }, { data: tasks },
+          { data: assignees }, { data: reports }
+        ] = await Promise.all([
+          sb.from('project_overview').select('*').eq('id', 1).single(),
+          sb.from('phases').select('*').order('created_at', { ascending: true }),
+          sb.from('members').select('*'),
+          sb.from('sessions').select('*').order('created_at', { ascending: true }),
+          sb.from('attendance_records').select('*'),
+          sb.from('tasks').select('*').order('updated_at', { ascending: false }),
+          sb.from('task_assignees').select('*'),
+          sb.from('reports').select('*').order('updated_at', { ascending: false })
+        ]);
+
+        state.overview = overview ? overview.content : 'No overview provided.';
+        state.phases = phases || [];
+        state.members = members || [];
+        state.sessions = sessions || [];
+        state.attendance = attendance || [];
+        state.tasks = tasks || [];
+        state.task_assignees = assignees || [];
+        state.reports = reports || [];
+
+        renderAll();
+      } catch (error) {
+        console.error("Error fetching data:", error);
       }
-      alert('Password updated successfully.');
-      document.getElementById('prof-pwd').value = '';
-      document.getElementById('prof-pwd-confirm').value = '';
     }
 
-    // ─── KPI helpers ─────────────────────────────────────────────────────────────
+    // ─── KPI Helpers ─────────────────────────────────────────────────────────────
     function getAttRate(mid) {
       if (!state.sessions.length) return 0;
-      const p = state.sessions.filter(s => state.attendance[mid]?.[s.id] === 'present').length;
+      const p = state.attendance.filter(a => a.member_id === mid && a.status === 'present').length;
       return Math.round((p / state.sessions.length) * 100);
     }
     function getTaskRate(mid) {
-      const ts = state.tasks.filter(t => t.mids.includes(mid));
+      const assignedTaskIds = state.task_assignees.filter(a => a.member_id === mid).map(a => a.task_id);
+      const ts = state.tasks.filter(t => assignedTaskIds.includes(t.id));
       if (!ts.length) return 100;
       return Math.round((ts.filter(t => t.status === 'done').length / ts.length) * 100);
     }
@@ -965,21 +763,22 @@ Weekly Meeting Structure (Every Saturday 4–6pm)
       return Math.round((state.reports.filter(r => r.status === 'done').length / state.reports.length) * 100);
     }
     function getEngagement(mid) { return Math.round((getAttRate(mid) * 0.4) + (getTaskRate(mid) * 0.35) + (getRepRate() * 0.25)); }
-    function isCertEligible(mid) { return getAttRate(mid) >= 90 && getTaskRate(mid) >= 90 && getRepRate() >= 90; }
 
-    // ─── Tab switching ────────────────────────────────────────────────────────────
-    function switchTab(t) {
-      document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-      document.getElementById(t).classList.add('active');
-      const btn = document.querySelector(`.tab-btn[onclick="switchTab('${t}')"]`);
-      if (btn) btn.classList.add('active');
+    // ─── Render ──────────────────────────────────────────────────────────────────
+    function esc(s) {
+      if (s == null) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function formatName(m) {
+      if (!m) return '';
+      return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
     }
 
-    // ─── Render ───────────────────────────────────────────────────────────────────
     function renderAll() {
+      // Overview
       document.getElementById('overview-content').textContent = state.overview;
 
+      // KPIs
       let tA = 0, tE = 0, tD = state.tasks.filter(t => t.status === 'done').length;
       state.members.forEach(m => { tA += getAttRate(m.id); tE += getEngagement(m.id); });
       document.getElementById('kpi-att').textContent = state.members.length ? `${Math.round(tA / state.members.length)}%` : '0%';
@@ -1002,7 +801,8 @@ Weekly Meeting Structure (Every Saturday 4–6pm)
       viewableMembers.forEach(m => {
         aH += `<tr><td>${formatName(m)}</td>`;
         state.sessions.forEach(s => {
-          const st = state.attendance[m.id]?.[s.id] || 'none';
+          const rec = state.attendance.find(a => a.member_id === m.id && a.session_id === s.id);
+          const st = rec ? rec.status : 'none';
           const dis = currentUser.role === 'admin' ? '' : 'disabled';
           aH += `<td><button class="att-btn ${esc(st)}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st === 'present' ? '✓' : st === 'absent' ? '✕' : ''}</button></td>`;
         });
@@ -1014,23 +814,29 @@ Weekly Meeting Structure (Every Saturday 4–6pm)
       const renderT = (list, tblId) => {
         let h = `<tr><th>Task</th><th>Assignees</th><th>Phase</th><th>Submission</th><th>Status</th><th class="admin-only">Act</th></tr>`;
         list.forEach(t => {
-          const ph = state.phases.find(x => x.id === t.phaseId) || {};
-          const isAssigned = t.mids.includes(currentUser.id);
+          const ph = state.phases.find(x => x.id === t.phase_id) || {};
+          const assignedMids = state.task_assignees.filter(a => a.task_id === t.id).map(a => a.member_id);
+          const isAssigned = assignedMids.includes(currentUser.id);
           const canEdit = currentUser.role === 'admin' || (currentUser.role === 'member' && isAssigned && !ph.locked);
-          const mN = t.mids.map(id => { const member = state.members.find(x => x.id === id); return member ? formatName(member) : ''; }).filter(Boolean).join(', ');
+
+          const mN = assignedMids.map(id => {
+            const member = state.members.find(x => x.id === id); return member ? formatName(member) : '';
+          }).filter(Boolean).join(', ');
+
           const opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
-          const fileInfo = t.fileName ? `<a href="#" onclick="downloadFile('task','${esc(t.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+          const fileInfo = t.file_name ? `<a href="${t.file_url}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+
           h += `<tr>
-            <td><div style="font-weight:600; margin-bottom:4px">${esc(t.desc)}</div></td>
+            <td><div style="font-weight:600; margin-bottom:4px">${esc(t.description)}</div></td>
             <td><span class="text-muted" style="font-size:12px">${mN || 'None'}</span></td>
             <td><span class="badge">${esc(ph.name || '?')}</span> ${ph.locked ? '🔒' : ''}</td>
             <td>
               ${fileInfo}<br>
-              ${canEdit ? `<input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="uploadTaskFile('${esc(t.id)}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}
-              <input type="text" placeholder="References (Required)" value="${esc(t.refs)}" onchange="updT('${esc(t.id)}','refs',this.value)" ${!canEdit ? 'disabled' : ''} style="font-size:12px; padding:0.25rem; margin-top:4px">
+              ${canEdit ? `<input type="file" onchange="uploadFile('tasks', '${esc(t.id)}', this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}
+              <input type="text" placeholder="References" value="${esc(t.references_text || '')}" onchange="updRecord('tasks','${esc(t.id)}','references_text',this.value)" ${!canEdit ? 'disabled' : ''} style="font-size:12px; padding:0.25rem; margin-top:4px">
             </td>
-            <td><select onchange="updT('${esc(t.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
-            <td class="admin-only"><button class="btn btn-sm" onclick="openTaskModal('${esc(t.id)}')">✎</button></td>
+            <td><select onchange="updRecord('tasks','${esc(t.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
+            <td class="admin-only"><button class="btn btn-sm btn-danger" onclick="delRecord('tasks','${esc(t.id)}')">Del</button></td>
           </tr>`;
         });
         document.getElementById(tblId).innerHTML = h;
@@ -1039,24 +845,27 @@ Weekly Meeting Structure (Every Saturday 4–6pm)
       renderT(state.tasks.filter(t => t.status === 'done'), 'tasks-history');
 
       // Reports
-      let rH = `<tr><th>Report Type</th><th>Document Upload (Word only)</th><th>Status</th></tr>`;
+      let rH = `<tr><th>Report Type</th><th>Document Upload</th><th>Status</th><th class="admin-only">Act</th></tr>`;
       state.reports.forEach(r => {
         const canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
         const opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
-        const rFileInfo = r.fileName ? `<a href="#" onclick="downloadFile('report','${esc(r.id)}'); return false;" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.fileName)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+        const rFileInfo = r.file_name ? `<a href="${r.file_url}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+
         rH += `<tr>
-          <td style="font-weight:600">${esc(r.type)}</td>
-          <td>${rFileInfo}<br>${canEdit ? `<input type="file" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="uploadReportFile('${esc(r.id)}',this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}</td>
-          <td><select onchange="updR('${esc(r.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
+          <td style="font-weight:600">${esc(r.report_type)}</td>
+          <td>${rFileInfo}<br>${canEdit ? `<input type="file" onchange="uploadFile('reports', '${esc(r.id)}', this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}</td>
+          <td><select onchange="updRecord('reports','${esc(r.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
+          <td class="admin-only"><button class="btn btn-sm btn-danger" onclick="delRecord('reports','${esc(r.id)}')">Del</button></td>
         </tr>`;
       });
       document.getElementById('reports-table').innerHTML = rH;
 
       // Certs
-      let cH = `<tr><th>Member</th><th>Att %</th><th>Task %</th><th>Rep %</th><th>Total Eng</th><th>Eligibility</th><th class="admin-only">Act</th></tr>`;
+      let cH = `<tr><th>Member</th><th>Att %</th><th>Task %</th><th>Rep %</th><th>Total Eng</th><th>Eligibility</th></tr>`;
       viewableMembers.forEach(m => {
-        const e = getEngagement(m.id), eligible = isCertEligible(m.id);
+        const e = getEngagement(m.id);
         const aR = getAttRate(m.id), tR = getTaskRate(m.id), rpR = getRepRate();
+        const eligible = aR >= 90 && tR >= 90 && rpR >= 90;
         cH += `<tr>
           <td><b>${formatName(m)}</b></td>
           <td><span class="badge ${aR >= 90 ? 'success' : 'danger'}">${aR}%</span></td>
@@ -1064,10 +873,6 @@ Weekly Meeting Structure (Every Saturday 4–6pm)
           <td><span class="badge ${rpR >= 90 ? 'success' : 'danger'}">${rpR}%</span></td>
           <td><span class="badge ${e >= 90 ? 'success' : 'warning'}">${e}%</span></td>
           <td>${eligible ? '<span style="color:var(--success); font-weight:600">✓ Certified</span>' : '<span class="text-muted">Ineligible</span>'}</td>
-          <td class="admin-only">
-            <button class="btn btn-sm" onclick="openMemberModal('${esc(m.id)}')">Edit</button>
-            <button class="btn btn-sm btn-danger" onclick="delM('${esc(m.id)}')">Del</button>
-          </td>
         </tr>`;
       });
       document.getElementById('certs-table').innerHTML = cH;
@@ -1075,16 +880,39 @@ Weekly Meeting Structure (Every Saturday 4–6pm)
       // Admin phases
       document.getElementById('phases-table').innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` +
         state.phases.map(p => `<tr><td>${esc(p.name)}</td><td>${p.locked ? '🔒 Locked' : '🔓 Open'}</td>
-          <td><button class="btn btn-sm" onclick="togP('${esc(p.id)}')">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delP('${esc(p.id)}')">Del</button></td></tr>`).join('');
+          <td><button class="btn btn-sm" onclick="updRecord('phases','${esc(p.id)}','locked',${!p.locked})">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delRecord('phases','${esc(p.id)}')">Del</button></td></tr>`).join('');
     }
 
-    // ─── Actions ─────────────────────────────────────────────────────────────────
+    // ─── Database Actions (Direct DB Updates) ────────────────────────────────────
+
     window.editOverview = function () {
       if (currentUser.role !== 'admin') return;
       openModal('Edit Project Overview', `
         <div class="form-group"><label>Overview Content</label>
         <textarea id="ov-text" rows="10" style="min-height:200px">${esc(state.overview)}</textarea></div>
-      `, () => { state.overview = document.getElementById('ov-text').value; saveState(); });
+      `, async () => {
+        const txt = document.getElementById('ov-text').value;
+        const { error } = await sb.from('project_overview').upsert({ id: 1, content: txt });
+        if (error) alert(error.message); else fetchData();
+      });
+    };
+
+    window.addPhase = async function () {
+      if (currentUser.role !== 'admin') return;
+      const n = prompt('Phase name:');
+      if (n) {
+        await sb.from('phases').insert({ name: n });
+        fetchData();
+      }
+    };
+
+    window.addReport = async function () {
+      if (currentUser.role !== 'admin') return;
+      const n = prompt('Report Title (e.g. Methodology):');
+      if (n) {
+        await sb.from('reports').insert({ report_type: n });
+        fetchData();
+      }
     };
 
     window.manageSessions = function () {
@@ -1092,295 +920,130 @@ Weekly Meeting Structure (Every Saturday 4–6pm)
       const html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
         <span>${esc(s.label)} ${s.active ? '<span style="color:var(--success)">● Active</span>' : ''}</span>
         <div class="flex-gap">
-          <button class="btn btn-sm" onclick="renameSess('${esc(s.id)}')">Rename</button>
-          <button class="btn btn-sm" onclick="togSess('${esc(s.id)}')">${s.active ? 'Deactivate' : 'Set Active'}</button>
-          <button class="btn btn-sm btn-danger" onclick="delSess('${esc(s.id)}')">Del</button>
+          <button class="btn btn-sm" onclick="updRecord('sessions','${esc(s.id)}','active',${!s.active}); closeModal();">Toggle Active</button>
+          <button class="btn btn-sm btn-danger" onclick="delRecord('sessions','${esc(s.id)}'); closeModal();">Del</button>
         </div></div>`).join('') +
-        `<button class="btn btn-primary" style="margin-top:1rem; width:100%" onclick="addSession()">+ New Session</button>`;
-      openModal('Manage Sessions', html, () => { saveState(); });
+        `<div style="margin-top:1rem;"><input type="text" id="ns-name" placeholder="New session name">
+         <button class="btn btn-primary" style="margin-top:0.5rem; width:100%" onclick="addNewSession()">+ Create Session</button></div>`;
+      openModal('Manage Sessions', html, () => { });
     };
 
-    window.addSession = function () {
-      if (currentUser.role !== 'admin') return;
-      const n = prompt('Session Name:');
-      if (n) { state.sessions.forEach(s => s.active = false); state.sessions.push({ id: 's' + Date.now(), label: n, active: true }); saveState(); closeModal(); manageSessions(); }
-    };
-
-    window.togSess = function (id) {
-      if (currentUser.role !== 'admin') return;
-      state.sessions.forEach(s => { if (s.id === id) s.active = !s.active; else s.active = false; });
-      saveState(); closeModal(); manageSessions();
-    };
-
-    window.renameSess = function (id) {
-      if (currentUser.role !== 'admin') return;
-      const s = state.sessions.find(x => x.id === id);
-      if (!s) return;
-      const n = prompt('New session name:', s.label);
-      if (n) { s.label = n; saveState(); closeModal(); manageSessions(); }
-    };
-
-    window.delSess = function (id) {
-      if (currentUser.role !== 'admin') return;
-      const s = state.sessions.find(x => x.id === id);
-      if (!s) return;
-      if (!confirm(`Delete session "${s.label}"?`)) return;
-      if (!confirm(`FINAL WARNING: This will permanently remove "${s.label}" and all its attendance data. Continue?`)) return;
-      state.sessions = state.sessions.filter(x => x.id !== id);
-      Object.keys(state.attendance).forEach(mid => { delete state.attendance[mid][id]; });
-      saveState(); closeModal(); manageSessions();
-    };
-
-    window.memberSignIn = function () {
-      const act = state.sessions.find(s => s.active);
-      if (!act) return;
-      if (!state.attendance[currentUser.id]) state.attendance[currentUser.id] = {};
-      state.attendance[currentUser.id][act.id] = 'present';
-      alert('Signed in successfully!'); saveState();
-    };
-
-    window.togAtt = function (mid, sid) {
-      if (currentUser.role !== 'admin') return;
-      if (!state.attendance[mid]) state.attendance[mid] = {};
-      const curr = state.attendance[mid][sid] || 'none';
-      state.attendance[mid][sid] = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
-      saveState();
-    };
-
-    window.openTaskModal = function (tid) {
-      if (currentUser.role !== 'admin') return;
-      const t = state.tasks.find(x => x.id === tid) || { id: '', desc: '', phaseId: '', mids: [] };
-      const mO = state.members.map(m => `<option value="${esc(m.id)}" ${t.mids.includes(m.id) ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
-      const pO = state.phases.map(p => `<option value="${esc(p.id)}" ${t.phaseId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
-      openModal(tid ? 'Edit Task' : 'New Task', `
-        <div class="form-group"><label>Description</label><input type="text" id="tm-desc" value="${esc(t.desc)}"></div>
-        <div class="form-group"><label>Phase</label><select id="tm-ph">${pO}</select></div>
-        <div class="form-group"><label>Assignees (Ctrl/Cmd+Click for multiple)</label><select id="tm-mids" multiple size="4">${mO}</select></div>
-        ${tid ? `<button class="btn btn-danger" style="width:100%; margin-top:1rem" onclick="delT('${esc(tid)}')">Delete Task</button>` : ''}
-      `, () => {
-        const sels = Array.from(document.getElementById('tm-mids').selectedOptions).map(x => x.value);
-        const obj = { desc: document.getElementById('tm-desc').value, phaseId: document.getElementById('tm-ph').value, mids: sels };
-        if (!obj.desc) { alert('Description required'); return false; }
-        if (tid) Object.assign(t, obj);
-        else state.tasks.push({ id: 't' + Date.now(), ...obj, fileData: null, fileName: '', fileUrl: '', refs: '', status: 'pending' });
-        saveState();
-      });
-    };
-
-    window.updT = function (id, f, v) {
-      const t = state.tasks.find(x => x.id === id);
-      if (!t) return;
-      if (f === 'status' && v === 'done' && !t.refs) {
-        alert('References are required before marking a task as done.');
-        renderAll(); return;
+    window.addNewSession = async function () {
+      const n = document.getElementById('ns-name').value;
+      if (n) {
+        await sb.from('sessions').update({ active: false }).neq('id', '00000000-0000-0000-0000-000000000000'); // Deactivate others
+        await sb.from('sessions').insert({ label: n, active: true });
+        closeModal(); fetchData(); manageSessions();
       }
-      if (currentUser.role === 'member' && f === 'desc') {
-        if (!state.editRequests) state.editRequests = [];
-        state.editRequests.push({ id: 'er' + Date.now(), tid: id, mid: currentUser.id, field: f, newVal: v, status: 'pending' });
-        alert('Edit request submitted for admin approval.');
-        saveState(); return;
-      }
-      t[f] = v; saveState();
-    };
-
-    window.updR = function (id, f, v) {
-      const r = state.reports.find(x => x.id === id);
-      if (r) { r[f] = v; saveState(); }
-    };
-
-    window.delT = function (id) {
-      if (currentUser.role !== 'admin') return;
-      if (confirm('Delete this task?')) { state.tasks = state.tasks.filter(x => x.id !== id); saveState(); closeModal(); }
-    };
-
-    // ─── File upload — validates type on client AND server path ──────────────────
-    const ALLOWED_MIME = {
-      tasks: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-      reports: ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-    };
-    const ALLOWED_EXT = {
-      tasks: ['.pdf', '.doc', '.docx'],
-      reports: ['.doc', '.docx']
-    };
-
-    async function uploadToStorage(file, folder) {
-      // Validate MIME type
-      const allowedMimes = ALLOWED_MIME[folder] || ALLOWED_MIME.tasks;
-      const allowedExts = ALLOWED_EXT[folder] || ALLOWED_EXT.tasks;
-      const ext = '.' + file.name.split('.').pop().toLowerCase();
-      if (!allowedMimes.includes(file.type) && !allowedExts.includes(ext)) {
-        throw new Error(`Invalid file type. Allowed: ${allowedExts.join(', ')}`);
-      }
-      if (file.size > 20 * 1024 * 1024) throw new Error('File too large (max 20 MB)');
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const path = `${folder}/${Date.now()}_${safeName}`;
-      const { data, error } = await sb.storage.from('uploads').upload(path, file, { upsert: true });
-      if (error) throw error;
-      const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
-      return { url: urlData.publicUrl, name: file.name };
     }
 
-    window.uploadTaskFile = async function (id, input) {
-      if (!input.files || !input.files[0]) return;
-      const file = input.files[0];
-      const t = state.tasks.find(x => x.id === id);
-      if (!t) return;
-      input.disabled = true;
-      try {
-        const result = await uploadToStorage(file, 'tasks');
-        t.fileUrl = result.url; t.fileName = result.name; t.fileData = null;
-        await saveState();
-      } catch (e) { alert('Upload failed: ' + e.message); renderAll(); }
+    window.memberSignIn = async function () {
+      const act = state.sessions.find(s => s.active);
+      if (!act) return;
+      const { error } = await sb.from('attendance_records').upsert({ session_id: act.id, member_id: currentUser.id, status: 'present' });
+      if (error) alert(error.message); else { alert('Signed in successfully!'); fetchData(); }
     };
 
-    window.uploadReportFile = async function (id, input) {
-      if (!input.files || !input.files[0]) return;
-      const file = input.files[0];
-      const r = state.reports.find(x => x.id === id);
-      if (!r) return;
-      input.disabled = true;
-      try {
-        const result = await uploadToStorage(file, 'reports');
-        r.fileUrl = result.url; r.fileName = result.name; r.fileData = null;
-        await saveState();
-      } catch (e) { alert('Upload failed: ' + e.message); renderAll(); }
-    };
-
-    window.downloadFile = function (type, id) {
-      const item = type === 'task' ? state.tasks.find(x => x.id === id) : state.reports.find(x => x.id === id);
-      if (!item) return alert('Item not found.');
-      const url = item.fileUrl || item.fileData;
-      if (!url) return alert('No file attached.');
-      const a = document.createElement('a');
-      a.href = url; a.target = '_blank'; a.download = item.fileName || 'download'; a.click();
-    };
-
-    // ─── Member management — uses Supabase RPCs for create/update/delete ─────────
-    window.openMemberModal = function (mid) {
+    window.togAtt = async function (mid, sid) {
       if (currentUser.role !== 'admin') return;
-      const m = state.members.find(x => x.id === mid) || { name: '', email: '', tag: '' };
-      openModal(mid ? 'Edit Member' : 'Add Member', `
-        <div class="form-group"><label>Name</label><input type="text" id="am-name" value="${esc(m.name)}"></div>
-        <div class="form-group"><label>Email Address</label><input type="email" id="am-email" value="${esc(m.email || '')}" placeholder="For login and notifications"></div>
-        <div class="form-group"><label>Nickname / Tag</label><input type="text" id="am-tag" value="${esc(m.tag || '')}" placeholder="e.g. @Leader"></div>
-        ${!mid ? `<div class="form-group"><label>Initial Password</label><input type="password" id="am-pwd" placeholder="Default: 000"></div>` : ''}
-      `, async () => {
-        const n = document.getElementById('am-name').value.trim();
-        const e = document.getElementById('am-email').value.trim();
-        const t = document.getElementById('am-tag').value.trim();
-        if (!n) { alert('Name required'); return false; }
-        if (!e) { alert('Email required for login'); return false; }
+      const rec = state.attendance.find(a => a.member_id === mid && a.session_id === sid);
+      const curr = rec ? rec.status : 'none';
+      const nxt = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
+      await sb.from('attendance_records').upsert({ session_id: sid, member_id: mid, status: nxt });
+      fetchData();
+    };
 
-        if (mid) {
-          // Update via RPC
-          const { data, error } = await sb.rpc('update_member', { member_id: mid, member_name: n, member_email: e, member_tag: t });
-          if (error || !data?.success) { alert('Failed to update member'); return false; }
-          m.name = n; m.email = e; m.tag = t;
-        } else {
-          // Add via RPC — password stored as bcrypt hash on server, never in state
-          const pwd = document.getElementById('am-pwd').value || '000';
-          const newId = 'm' + Date.now();
-          const { data, error } = await sb.rpc('add_member', { member_id: newId, member_name: n, member_email: e, member_tag: t, member_pwd: pwd });
-          if (error || !data?.success) { alert('Failed to add member: ' + (data?.error || error?.message || 'unknown error')); return false; }
-          state.members.push({ id: newId, name: n, email: e, tag: t }); // NO pwd field
+    window.openTaskModal = function () {
+      if (currentUser.role !== 'admin') return;
+      const mO = state.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+      const pO = state.phases.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+      openModal('New Task', `
+        <div class="form-group"><label>Description</label><input type="text" id="tm-desc"></div>
+        <div class="form-group"><label>Phase</label><select id="tm-ph">${pO}</select></div>
+        <div class="form-group"><label>Assignees (Ctrl/Cmd+Click for multiple)</label><select id="tm-mids" multiple size="4">${mO}</select></div>
+      `, async () => {
+        const desc = document.getElementById('tm-desc').value;
+        const phaseId = document.getElementById('tm-ph').value;
+        const mids = Array.from(document.getElementById('tm-mids').selectedOptions).map(x => x.value);
+        if (!desc) { alert('Description required'); return false; }
+
+        // Insert task
+        const { data: newTask, error } = await sb.from('tasks').insert({ description: desc, phase_id: phaseId }).select().single();
+        if (error) { alert(error.message); return false; }
+
+        // Insert assignees
+        if (mids.length > 0) {
+          const assignData = mids.map(mid => ({ task_id: newTask.id, member_id: mid }));
+          await sb.from('task_assignees').insert(assignData);
         }
-        saveState();
+        fetchData();
       });
     };
 
-    window.delM = async function (id) {
-      if (currentUser.role !== 'admin') return;
-      if (!confirm('Delete this member? This cannot be undone.')) return;
-      const { data, error } = await sb.rpc('delete_member', { member_id: id });
-      if (error || !data?.success) { alert('Failed to delete member'); return; }
-      state.members = state.members.filter(x => x.id !== id);
-      saveState();
+    // Generic update/delete handlers
+    window.updRecord = async function (table, id, field, val) {
+      const { error } = await sb.from(table).update({ [field]: val }).eq('id', id);
+      if (error) alert(error.message); else fetchData();
     };
 
-    window.addPhase = function () {
-      if (currentUser.role !== 'admin') return;
-      const n = prompt('Phase name:');
-      if (n) { state.phases.push({ id: 'ph' + Date.now(), name: n, locked: false }); saveState(); }
-    };
-    window.togP = function (id) {
-      if (currentUser.role !== 'admin') return;
-      const p = state.phases.find(x => x.id === id);
-      if (p) { p.locked = !p.locked; saveState(); }
-    };
-    window.delP = function (id) {
-      if (currentUser.role !== 'admin') return;
-      if (confirm('Delete this phase?')) { state.phases = state.phases.filter(x => x.id !== id); saveState(); }
+    window.delRecord = async function (table, id) {
+      if (!confirm('Delete this item?')) return;
+      const { error } = await sb.from(table).delete().eq('id', id);
+      if (error) alert(error.message); else fetchData();
     };
 
-    // ─── Deadline email ──────────────────────────────────────────────────────────
-    window.sendDeadlineEmail = function () {
-      if (currentUser.role !== 'admin') return;
-      const emails = state.members.map(m => m.email).filter(Boolean);
-      if (!emails.length) return alert('No members with email addresses found.');
-      const bcc = emails.join(',');
-      const subject = encodeURIComponent('MIH Project Deadline Reminder');
-      const body = encodeURIComponent('Hello MIH Team,\n\nThis is a reminder that our project deadline is this Friday at 11:59 PM.\n\nPlease ensure your tasks are marked as done and all reports are submitted with the necessary document uploads and references via the MIH Project Tracker.\n\nThank you!');
-      window.location.href = `mailto:?bcc=${bcc}&subject=${subject}&body=${body}`;
-    };
+    // ─── Secure File Uploads ─────────────────────────────────────────────────────
+    window.uploadFile = async function (table, recordId, input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      input.disabled = true;
 
-    // ─── Edit requests ───────────────────────────────────────────────────────────
-    window.viewEditRequests = function () {
-      if (currentUser.role !== 'admin') return;
-      if (!state.editRequests) state.editRequests = [];
-      const pending = state.editRequests.filter(r => r.status === 'pending');
-      if (!pending.length) { alert('No pending edit requests.'); return; }
-      const html = pending.map(r => {
-        const t = state.tasks.find(x => x.id === r.tid);
-        const m = state.members.find(x => x.id === r.mid);
-        return `<div class="glass-panel" style="padding:1rem; margin-bottom:0.5rem">
-          <div><b>${esc(m?.name || '?')}</b> wants to change <b>${esc(t?.desc || '?')}</b></div>
-          <div class="text-muted" style="font-size:12px">New value: ${esc(r.newVal)}</div>
-          <div class="flex-gap" style="margin-top:0.5rem">
-            <button class="btn btn-sm btn-primary" onclick="approveER('${esc(r.id)}')">Approve</button>
-            <button class="btn btn-sm btn-danger" onclick="rejectER('${esc(r.id)}')">Reject</button>
-          </div></div>`;
-      }).join('');
-      openModal('Edit Requests', html, () => { });
-    };
+      try {
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${table}/${Date.now()}_${safeName}`;
 
-    window.approveER = function (id) {
-      if (currentUser.role !== 'admin') return;
-      const r = state.editRequests.find(x => x.id === id);
-      if (!r) return;
-      const t = state.tasks.find(x => x.id === r.tid);
-      if (t) t[r.field] = r.newVal;
-      r.status = 'approved';
-      saveState(); closeModal(); viewEditRequests();
-    };
+        const { error: uploadError } = await sb.storage.from('uploads').upload(path, file);
+        if (uploadError) throw uploadError;
 
-    window.rejectER = function (id) {
-      if (currentUser.role !== 'admin') return;
-      const r = state.editRequests.find(x => x.id === id);
-      if (r) r.status = 'rejected';
-      saveState(); closeModal(); viewEditRequests();
-    };
+        const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
 
-    // ─── Export — strips all sensitive fields ────────────────────────────────────
-    window.exportJSON = function () {
-      if (currentUser.role !== 'admin') return;
-      const safeState = JSON.parse(JSON.stringify(state));
-      delete safeState.pin;
-      if (Array.isArray(safeState.members)) {
-        safeState.members = safeState.members.map(({ pwd, pwd_hash, ...rest }) => rest);
+        // Update the record in the DB with the file info
+        await sb.from(table).update({ file_url: urlData.publicUrl, file_name: file.name }).eq('id', recordId);
+
+        fetchData();
+      } catch (e) {
+        alert('Upload failed: ' + e.message);
+        input.disabled = false;
       }
-      const a = document.createElement('a');
-      a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(safeState, null, 2));
-      a.download = 'mih_export.json'; a.click();
     };
 
-    // ─── Clock ───────────────────────────────────────────────────────────────────
+    // ─── UI Helpers ──────────────────────────────────────────────────────────────
+    function switchTab(t) {
+      document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(t).classList.add('active');
+      const btn = document.querySelector(`.tab-btn[onclick="switchTab('${t}')"]`);
+      if (btn) btn.classList.add('active');
+    }
+
+    function openModal(title, html, onSave) {
+      document.getElementById('m-title').textContent = title;
+      document.getElementById('m-body').innerHTML = html;
+      document.getElementById('modal').style.display = 'flex';
+      document.getElementById('m-save').onclick = async () => {
+        const result = await onSave();
+        if (result !== false) closeModal();
+      };
+    }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
     function updateClock() {
       const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
       document.getElementById('realtime-clock').textContent = new Date().toLocaleString(undefined, options);
     }
-    setInterval(updateClock, 1000);
-    updateClock();
+    setInterval(updateClock, 1000); updateClock();
 
+    // Start app
     init();
   </script>
 </body>

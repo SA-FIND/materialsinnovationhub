@@ -1,217 +1,222 @@
--- MIH Project Tracker - Supabase Setup (Secured v2)
--- Run this in Supabase SQL Editor (Dashboard > SQL Editor > New Query)
--- Safe to re-run (idempotent)
+-- ========================================================================================
+-- MIH PROJECT TRACKER: SECURE MASTER SCHEMA (V4)
+-- ========================================================================================
 
--- 0. Enable pgcrypto for proper password hashing
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- 1. CLEANUP OLD VULNERABLE TABLES (Warning: Drops existing custom data)
+DROP TABLE IF EXISTS project_state CASCADE;
+DROP VIEW IF EXISTS members_public CASCADE;
+DROP TABLE IF EXISTS task_assignees CASCADE;
+DROP TABLE IF EXISTS attendance_records CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
+DROP TABLE IF EXISTS reports CASCADE;
+DROP TABLE IF EXISTS phases CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;
+DROP TABLE IF EXISTS project_overview CASCADE;
+DROP TABLE IF EXISTS members CASCADE;
 
--- ============================================================
--- 1. PROJECT STATE TABLE (non-sensitive app data as JSON)
--- ============================================================
-CREATE TABLE IF NOT EXISTS project_state (
-  id INTEGER PRIMARY KEY DEFAULT 1,
-  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+-- Drop old unsafe RPCs
+DROP FUNCTION IF EXISTS authenticate_member CASCADE;
+DROP FUNCTION IF EXISTS authenticate_admin CASCADE;
+DROP FUNCTION IF EXISTS add_member CASCADE;
+DROP FUNCTION IF EXISTS update_member CASCADE;
+DROP FUNCTION IF EXISTS delete_member CASCADE;
+DROP FUNCTION IF EXISTS change_member_password CASCADE;
+DROP FUNCTION IF EXISTS change_admin_pin CASCADE;
+
+-- ========================================================================================
+-- 2. CORE SCHEMA CREATION
+-- ========================================================================================
+
+-- A. MEMBERS (Securely linked to Supabase Native Auth)
+CREATE TABLE members (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  tag TEXT,
+  role TEXT DEFAULT 'member' CHECK (role IN ('member', 'admin')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- B. PROJECT OVERVIEW (Singleton table for the dashboard text)
+CREATE TABLE project_overview (
+  id INT PRIMARY KEY DEFAULT 1,
+  content TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT single_row CHECK (id = 1)
 );
 
-ALTER TABLE project_state ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "allow_select" ON project_state;
-DROP POLICY IF EXISTS "allow_insert" ON project_state;
-DROP POLICY IF EXISTS "allow_update" ON project_state;
-
-CREATE POLICY "allow_select" ON project_state FOR SELECT TO anon USING (true);
-CREATE POLICY "allow_insert" ON project_state FOR INSERT TO anon WITH CHECK (id = 1);
-CREATE POLICY "allow_update" ON project_state FOR UPDATE TO anon
-  USING (id = 1) WITH CHECK (id = 1);
-
--- Auto-update trigger for updated_at
-CREATE OR REPLACE FUNCTION update_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS update_project_state_timestamp ON project_state;
-CREATE TRIGGER update_project_state_timestamp
-  BEFORE UPDATE ON project_state
-  FOR EACH ROW EXECUTE FUNCTION update_timestamp();
-
--- Seed (only on first run)
-INSERT INTO project_state (id, data) VALUES (1, jsonb_build_object(
-  'admin_pin_hash', crypt('1234', gen_salt('bf'))
-))
-ON CONFLICT (id) DO NOTHING;
-
--- ============================================================
--- 2. MEMBERS TABLE (passwords stored as bcrypt hashes)
--- ============================================================
-CREATE TABLE IF NOT EXISTS members (
-  id TEXT PRIMARY KEY,
+-- C. PHASES (e.g., Phase 1: Research)
+CREATE TABLE phases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
-  email TEXT DEFAULT '',
-  tag TEXT DEFAULT '',
-  pwd_hash TEXT NOT NULL DEFAULT crypt('000', gen_salt('bf')),
+  locked BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-ALTER TABLE members ENABLE ROW LEVEL SECURITY;
--- No policies for anon = no direct table access. All access via view + RPCs.
+-- D. TASKS
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  phase_id UUID REFERENCES phases(id) ON DELETE CASCADE,
+  description TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in progress', 'done')),
+  file_url TEXT,
+  file_name TEXT,
+  references_text TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Safe public view (no password column)
-CREATE OR REPLACE VIEW members_public AS
-  SELECT id, name, email, tag FROM members;
+-- E. TASK ASSIGNEES (Many-to-Many linking Tasks and Members)
+CREATE TABLE task_assignees (
+  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+  member_id UUID REFERENCES members(id) ON DELETE CASCADE,
+  PRIMARY KEY (task_id, member_id)
+);
 
-GRANT SELECT ON members_public TO anon;
+-- F. REPORTS
+CREATE TABLE reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_type TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in progress', 'done')),
+  file_url TEXT,
+  file_name TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- ============================================================
--- 3. RPC FUNCTIONS (SECURITY DEFINER = bypasses RLS)
--- ============================================================
+-- G. SESSIONS (For Saturday Meetings)
+CREATE TABLE sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  label TEXT NOT NULL,
+  active BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Auth: member login
-CREATE OR REPLACE FUNCTION authenticate_member(identifier TEXT, pwd TEXT)
-RETURNS JSON AS $$
-DECLARE
-  m RECORD;
+-- H. ATTENDANCE RECORDS
+CREATE TABLE attendance_records (
+  session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
+  member_id UUID REFERENCES members(id) ON DELETE CASCADE,
+  status TEXT CHECK (status IN ('present', 'absent', 'none')),
+  PRIMARY KEY (session_id, member_id)
+);
+
+-- ========================================================================================
+-- 3. AUTOMATED AUTHENTICATION TRIGGER
+-- ========================================================================================
+-- When a new user signs up via Supabase Auth, automatically build their MIH profile.
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
 BEGIN
-  SELECT id, name, email, tag INTO m FROM members
-  WHERE (LOWER(email) = LOWER(identifier) OR LOWER(name) = LOWER(identifier))
-    AND pwd_hash = crypt(pwd, pwd_hash);
-  IF m.id IS NULL THEN
-    RETURN json_build_object('success', false);
-  END IF;
-  RETURN json_build_object('success', true, 'member', json_build_object(
-    'id', m.id, 'name', m.name, 'email', m.email, 'tag', m.tag
-  ));
+  INSERT INTO public.members (id, name, email, tag)
+  VALUES (
+    new.id,
+    COALESCE(new.raw_user_meta_data->>'name', 'New Member'), 
+    new.email,
+    new.raw_user_meta_data->>'tag'
+  );
+  RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Auth: admin login
-CREATE OR REPLACE FUNCTION authenticate_admin(pin TEXT)
-RETURNS JSON AS $$
-DECLARE
-  stored_hash TEXT;
-BEGIN
-  SELECT data->>'admin_pin_hash' INTO stored_hash
-  FROM project_state WHERE id = 1;
-  IF stored_hash IS NOT NULL AND stored_hash = crypt(pin, stored_hash) THEN
-    RETURN json_build_object('success', true);
-  END IF;
-  RETURN json_build_object('success', false);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- CRUD: add member
-CREATE OR REPLACE FUNCTION add_member(
-  member_id TEXT, member_name TEXT,
-  member_email TEXT DEFAULT '', member_tag TEXT DEFAULT '',
-  member_pwd TEXT DEFAULT '000')
-RETURNS JSON AS $$
-BEGIN
-  INSERT INTO members (id, name, email, tag, pwd_hash)
-  VALUES (member_id, member_name, member_email, member_tag,
-          crypt(member_pwd, gen_salt('bf')));
-  RETURN json_build_object('success', true);
-EXCEPTION WHEN unique_violation THEN
-  RETURN json_build_object('success', false, 'error', 'ID exists');
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- CRUD: update member info (not password)
-CREATE OR REPLACE FUNCTION update_member(
-  member_id TEXT, member_name TEXT,
-  member_email TEXT DEFAULT '', member_tag TEXT DEFAULT '')
-RETURNS JSON AS $$
-BEGIN
-  UPDATE members SET name=member_name, email=member_email, tag=member_tag
-  WHERE id=member_id;
-  RETURN json_build_object('success', true);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- CRUD: delete member
-CREATE OR REPLACE FUNCTION delete_member(member_id TEXT)
-RETURNS JSON AS $$
-BEGIN
-  DELETE FROM members WHERE id=member_id;
-  RETURN json_build_object('success', true);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Password: change member password
-CREATE OR REPLACE FUNCTION change_member_password(member_id TEXT, new_pwd TEXT)
-RETURNS JSON AS $$
-BEGIN
-  UPDATE members SET pwd_hash = crypt(new_pwd, gen_salt('bf'))
-  WHERE id=member_id;
-  RETURN json_build_object('success', true);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Password: change admin PIN
-CREATE OR REPLACE FUNCTION change_admin_pin(new_pin TEXT)
-RETURNS JSON AS $$
-BEGIN
-  UPDATE project_state
-  SET data = jsonb_set(
-    COALESCE(data,'{}'::jsonb),
-    '{admin_pin_hash}',
-    to_jsonb(crypt(new_pin, gen_salt('bf')))
-  )
-  WHERE id = 1;
-  RETURN json_build_object('success', true);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Migration: move members from JSON blob to members table (one-time)
-CREATE OR REPLACE FUNCTION migrate_members_from_json()
-RETURNS JSON AS $$
-DECLARE
-  member_data JSONB;
-  m JSONB;
-  cnt INTEGER := 0;
-BEGIN
-  SELECT data->'members' INTO member_data FROM project_state WHERE id = 1;
-  IF member_data IS NULL OR jsonb_array_length(member_data) = 0 THEN
-    RETURN json_build_object('success', true, 'migrated', 0);
-  END IF;
-  FOR m IN SELECT * FROM jsonb_array_elements(member_data) LOOP
-    INSERT INTO members (id, name, email, tag, pwd_hash)
-    VALUES (
-      m->>'id', m->>'name',
-      COALESCE(m->>'email',''), COALESCE(m->>'tag',''),
-      crypt(COALESCE(m->>'pwd','000'), gen_salt('bf'))
-    ) ON CONFLICT (id) DO NOTHING;
-    cnt := cnt + 1;
-  END LOOP;
-  -- Remove sensitive fields from the JSON blob
-  UPDATE project_state
-  SET data = data - 'members' - 'pin'
-  WHERE id = 1;
-  RETURN json_build_object('success', true, 'migrated', cnt);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ============================================================
--- 4. FILE UPLOAD BUCKET
--- ============================================================
+-- ========================================================================================
+-- 4. STORAGE BUCKET SETUP
+-- ========================================================================================
+-- Create the uploads bucket if it doesn't exist
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('uploads', 'uploads', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- ========================================================================================
+-- 5. ROW LEVEL SECURITY (RLS) LOCKDOWN
+-- ========================================================================================
+-- Enable RLS on all tables
+ALTER TABLE members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_overview ENABLE ROW LEVEL SECURITY;
+ALTER TABLE phases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE task_assignees ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE attendance_records ENABLE ROW LEVEL SECURITY;
+
+-- ----------------------------------------------------------------------------------------
+-- READ POLICIES: All authenticated users can view the data
+-- ----------------------------------------------------------------------------------------
+CREATE POLICY "Auth users can view members" ON members FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Auth users can view overview" ON project_overview FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Auth users can view phases" ON phases FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Auth users can view tasks" ON tasks FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Auth users can view assignees" ON task_assignees FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Auth users can view reports" ON reports FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Auth users can view sessions" ON sessions FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Auth users can view attendance" ON attendance_records FOR SELECT TO authenticated USING (true);
+
+-- ----------------------------------------------------------------------------------------
+-- WRITE POLICIES: Admins can do everything, Members have restricted access
+-- ----------------------------------------------------------------------------------------
+
+-- Members: Users can update their own profile name/tag
+CREATE POLICY "Users can update own profile" ON members FOR UPDATE TO authenticated 
+USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+
+-- Overview: Only admins can edit
+CREATE POLICY "Admins update overview" ON project_overview FOR UPDATE TO authenticated 
+USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
+
+-- Phases: Only admins can manage
+CREATE POLICY "Admins manage phases" ON phases FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
+
+-- Tasks: Admins manage all. Members can only UPDATE tasks they are assigned to.
+CREATE POLICY "Admins manage tasks" ON tasks FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
+
+CREATE POLICY "Assignees can update their tasks" ON tasks FOR UPDATE TO authenticated 
+USING (EXISTS (SELECT 1 FROM task_assignees WHERE task_id = tasks.id AND member_id = auth.uid()));
+
+-- Task Assignees: Only admins assign tasks
+CREATE POLICY "Admins manage task assignees" ON task_assignees FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
+
+-- Reports: Admins and members can update reports (uploading documents)
+CREATE POLICY "Auth users can update reports" ON reports FOR UPDATE TO authenticated USING (true);
+
+-- Sessions: Only admins can create/delete/toggle active sessions
+CREATE POLICY "Admins manage sessions" ON sessions FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
+
+-- Attendance: Admins can do all. Members can only insert/update THEIR OWN attendance.
+CREATE POLICY "Admins manage all attendance" ON attendance_records FOR ALL TO authenticated 
+USING (EXISTS (SELECT 1 FROM members WHERE id = auth.uid() AND role = 'admin'));
+
+CREATE POLICY "Members log own attendance" ON attendance_records FOR INSERT TO authenticated 
+WITH CHECK (member_id = auth.uid());
+
+CREATE POLICY "Members update own attendance" ON attendance_records FOR UPDATE TO authenticated 
+USING (member_id = auth.uid()) WITH CHECK (member_id = auth.uid());
+
+-- ----------------------------------------------------------------------------------------
+-- STORAGE BUCKET SECURITY
+-- ----------------------------------------------------------------------------------------
 DROP POLICY IF EXISTS "upload_anon" ON storage.objects;
 DROP POLICY IF EXISTS "read_anon"   ON storage.objects;
 DROP POLICY IF EXISTS "update_anon" ON storage.objects;
 DROP POLICY IF EXISTS "delete_anon" ON storage.objects;
 
-CREATE POLICY "upload_anon" ON storage.objects FOR INSERT TO anon
-  WITH CHECK (bucket_id = 'uploads');
-CREATE POLICY "read_anon" ON storage.objects FOR SELECT TO anon
-  USING (bucket_id = 'uploads');
-CREATE POLICY "update_anon" ON storage.objects FOR UPDATE TO anon
-  USING (bucket_id = 'uploads');
-CREATE POLICY "delete_anon" ON storage.objects FOR DELETE TO anon
-  USING (bucket_id = 'uploads');
+-- Anyone can read (so files can be downloaded from the public URL)
+CREATE POLICY "Public read uploads" ON storage.objects FOR SELECT TO public USING (bucket_id = 'uploads');
+
+-- Only logged-in members can upload files
+CREATE POLICY "Auth users upload files" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'uploads');
+CREATE POLICY "Auth users update files" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'uploads');
+
+-- Only admins can delete files to prevent vandalism
+CREATE POLICY "Only admins delete files" ON storage.objects FOR DELETE TO authenticated 
+USING (
+  bucket_id = 'uploads' AND 
+  EXISTS (SELECT 1 FROM public.members WHERE id = auth.uid() AND role = 'admin')
+);
