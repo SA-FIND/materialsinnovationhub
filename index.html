@@ -823,10 +823,14 @@
       }
 
       function applyRole() {
+        // 1. Set the role attribute for CSS hiding/showing
         document.body.setAttribute('data-role', currentUser.role);
+
         let s = 'View Only';
         if (currentUser.role === 'admin') s = '👑 Admin';
         else if (currentUser.role === 'member') s = `👤 ${currentUser.name}`;
+        // 2. Add the Alumni status label
+        else if (currentUser.role === 'alumni') s = `🎓 Alumni: ${currentUser.name}`;
 
         const userStatus = document.getElementById('user-status');
         const loginBtn = document.getElementById('login-btn');
@@ -1111,11 +1115,14 @@
         renderT(state.tasks.filter(t => t.status !== 'done'), 'tasks-current');
         renderT(state.tasks.filter(t => t.status === 'done'), 'tasks-history');
 
+        // --- UPDATED REPORTS RENDERER ---
         const repTable = document.getElementById('reports-table');
         if (repTable) {
           let rH = `<tr><th>Report Type</th><th>Document Upload</th><th>Status</th><th class="admin-only">Act</th></tr>`;
           state.reports.forEach(r => {
+            // FIX: Only admins and members can edit. Alumni get read-only access.
             const canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
+            // ... (the rest of the report rendering code stays exactly the same)
             const opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
 
             const rFileInfo = r.file_name ? `<a href="${safeUrl(r.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px; white-space:nowrap; font-weight:600;">📎 Download: ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file attached</span>';
@@ -1191,11 +1198,15 @@
       window.sendEmailReminder = function () {
         if (currentUser.role !== 'admin') return;
 
-        // Attempt to gather emails if they are stored in your members table
-        // If you don't store emails in the DB, this will just leave the BCC blank for you to fill
-        const emails = state.members.map(m => m.email).filter(Boolean).join(',');
+        // FIX: Filter the members list to ONLY include active members and admins. Ignore alumni.
+        const emails = state.members
+          .filter(m => m.role === 'member' || m.role === 'admin')
+          .map(m => m.email)
+          .filter(Boolean)
+          .join(',');
 
         const subject = encodeURIComponent("MIH Update: Pending Tasks & Project Reminders");
+        // ... (the rest of the email body stays exactly the same)
         const body = encodeURIComponent(
           "Hello Team,\n\n" +
           "This is an automated reminder to please check the MIH Tracker. Make sure to:\n" +
