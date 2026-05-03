@@ -706,6 +706,505 @@
         if (loader) loader.style.display = 'none';
       }
     }
+
+    function toggleTheme() {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', state.theme);
+      try {
+        localStorage.setItem('mih_theme', state.theme);
+      } catch (e) {
+        console.warn("localStorage write denied", e);
+      }
+    }
+
+    function applyRole() {
+      document.body.setAttribute('data-role', currentUser.role);
+      let s = 'View Only';
+      if (currentUser.role === 'admin') s = '👑 Admin';
+      else if (currentUser.role === 'member') s = `👤 ${currentUser.name}`;
+
+      const userStatus = document.getElementById('user-status');
+      const loginBtn = document.getElementById('login-btn');
+      const logoutBtn = document.getElementById('logout-btn');
+      const changePwdBtn = document.getElementById('change-pwd-btn');
+
+      if (userStatus) userStatus.textContent = s;
+      if (loginBtn) loginBtn.style.display = currentUser.role === 'none' ? 'inline-block' : 'none';
+      if (logoutBtn) logoutBtn.style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
+      if (changePwdBtn) changePwdBtn.style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
+
+      if (currentUser.role === 'none') switchTab('dashboard');
+    }
+
+    // ─── Auth Functions ──────────────────────────────────────────────────────────
+    function promptSetPassword() {
+      const html = `
+        <div class="form-group"><label for="new-pwd">New Password</label><input type="password" id="new-pwd" placeholder="Enter new password (min 6 chars)"></div>
+        <div id="pwd-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
+      `;
+      openModal('Set Your Password', html, async () => {
+        const errDiv = document.getElementById('pwd-error');
+        errDiv.textContent = '';
+        const password = document.getElementById('new-pwd').value;
+        if (!password || password.length < 6) { errDiv.textContent = 'Password must be at least 6 characters'; return false; }
+
+        errDiv.textContent = 'Saving...';
+        const { error } = await sb.auth.updateUser({ password: password });
+        if (error) {
+          errDiv.textContent = 'Failed to set password: ' + error.message;
+          return false;
+        }
+        alert('Password successfully set!');
+        return true;
+      });
+    }
+
+    function openLogin() {
+      const html = `
+        <div id="log-box">
+          <div class="form-group"><label for="log-email">Email</label><input type="email" id="log-email" placeholder="Email address"></div>
+          <div class="form-group"><label for="log-pwd">Password</label><input type="password" id="log-pwd" placeholder="Password"></div>
+          <div id="login-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
+        </div>`;
+
+      openModal('Login', html, async () => {
+        const errDiv = document.getElementById('login-error');
+        errDiv.textContent = '';
+        const email = document.getElementById('log-email').value.trim();
+        const password = document.getElementById('log-pwd').value;
+        if (!email || !password) { errDiv.textContent = 'Enter email and password'; return false; }
+
+        errDiv.textContent = 'Logging in...';
+        try {
+          const { error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) {
+            errDiv.textContent = 'Login failed: ' + error.message;
+            return false;
+          }
+          return true;
+        } catch (e) {
+          errDiv.textContent = 'System/Network Error: ' + e.message;
+          return false;
+        }
+      });
+    }
+
+    async function logout() { await sb.auth.signOut(); }
+
+    // ─── Data Fetching ───────────────────────────────────────────────────────────
+    async function fetchData() {
+      try {
+        const [
+          { data: overview }, { data: phases }, { data: members },
+          { data: sessions }, { data: attendance }, { data: tasks },
+          { data: assignees }, { data: reports }
+        ] = await Promise.all([
+          sb.from('project_overview').select('*').eq('id', 1).single(),
+          sb.from('phases').select('*').order('created_at', { ascending: true }),
+          sb.from('members').select('*'),
+          sb.from('sessions').select('*').order('created_at', { ascending: true }),
+          sb.from('attendance_records').select('*'),
+          sb.from('tasks').select('*').order('updated_at', { ascending: false }),
+          sb.from('task_assignees').select('*'),
+          sb.from('reports').select('*').order('updated_at', { ascending: false })
+        ]);
+
+        state.overview = overview ? overview.content : 'No overview provided.';
+        state.phases = phases || [];
+        state.members = members || [];
+        state.sessions = sessions || [];
+        state.attendance = attendance || [];
+        state.tasks = tasks || [];
+        state.task_assignees = assignees || [];
+        state.reports = reports || [];
+
+        renderAll();
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        throw error;
+      }
+    }
+
+    // ─── KPI Helpers ─────────────────────────────────────────────────────────────
+    function getAttRate(mid) {
+      if (!state.sessions.length) return 0;
+      const p = state.attendance.filter(a => a.member_id === mid && a.status === 'present').length;
+      return Math.round((p / state.sessions.length) * 100);
+    }
+    function getTaskRate(mid) {
+      const assignedTaskIds = state.task_assignees.filter(a => a.member_id === mid).map(a => a.task_id);
+      const ts = state.tasks.filter(t => assignedTaskIds.includes(t.id));
+      if (!ts.length) return 100;
+      return Math.round((ts.filter(t => t.status === 'done').length / ts.length) * 100);
+    }
+    function getRepRate() {
+      if (!state.reports.length) return 100;
+      return Math.round((state.reports.filter(r => r.status === 'done').length / state.reports.length) * 100);
+    }
+    function getEngagement(mid) { return Math.round((getAttRate(mid) * 0.4) + (getTaskRate(mid) * 0.35) + (getRepRate() * 0.25)); }
+
+    // ─── Charts Integration ──────────────────────────────────────────────────────
+    let taskChartInst = null;
+    let attChartInst = null;
+
+    function renderCharts() {
+      if (!window.Chart) return;
+
+      const ctxTask = document.getElementById('taskChart');
+      if (ctxTask && currentUser.role !== 'none') {
+        // Safely destroy existing chart on the canvas
+        const existingTaskChart = Chart.getChart(ctxTask);
+        if (existingTaskChart) existingTaskChart.destroy();
+
+        const p = state.tasks.filter(t => t.status === 'pending').length;
+        const i = state.tasks.filter(t => t.status === 'in progress').length;
+        const d = state.tasks.filter(t => t.status === 'done').length;
+
+        taskChartInst = new Chart(ctxTask, {
+          type: 'doughnut',
+          data: {
+            labels: ['Pending', 'In Progress', 'Done'],
+            datasets: [{ data: [p, i, d], backgroundColor: ['#ef4444', '#f59e0b', '#10b981'], borderWidth: 0 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
+        });
+      }
+
+      const ctxAtt = document.getElementById('attChart');
+      if (ctxAtt && currentUser.role !== 'none') {
+        // Safely destroy existing chart on the canvas
+        const existingAttChart = Chart.getChart(ctxAtt);
+        if (existingAttChart) existingAttChart.destroy();
+
+        const labels = state.sessions.map(s => s.label);
+        const data = state.sessions.map(s => state.attendance.filter(a => a.session_id === s.id && a.status === 'present').length);
+
+        attChartInst = new Chart(ctxAtt, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{ label: 'Members Present', data: data, backgroundColor: '#38bdf8', borderRadius: 4 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { ticks: { color: '#94a3b8' } } } }
+        });
+      }
+    }
+
+    // ─── Render ──────────────────────────────────────────────────────────────────
+    function esc(s) {
+      if (s == null) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function safeUrl(u) {
+      if (!u) return '#';
+      if (u.startsWith('http://') || u.startsWith('https://')) return esc(u);
+      return '#';
+    }
+    function formatName(m) {
+      if (!m) return '';
+      return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
+    }
+
+    function renderAll() {
+      // Overview
+      const ovEl = document.getElementById('overview-content');
+      if (ovEl) ovEl.textContent = state.overview;
+
+      // KPIs
+      let tA = 0, tE = 0, tD = state.tasks.filter(t => t.status === 'done').length;
+      state.members.forEach(m => { tA += getAttRate(m.id); tE += getEngagement(m.id); });
+      const kpiAtt = document.getElementById('kpi-att');
+      const kpiHealth = document.getElementById('kpi-health');
+      const kpiTasks = document.getElementById('kpi-tasks');
+      if (kpiAtt) kpiAtt.textContent = state.members.length ? `${Math.round(tA / state.members.length)}%` : '0%';
+      if (kpiHealth) kpiHealth.textContent = state.members.length ? `${Math.round(tE / state.members.length)}%` : '0%';
+      if (kpiTasks) kpiTasks.textContent = tD;
+
+      // Leaderboard
+      const lb = [...state.members].sort((a, b) => getEngagement(b.id) - getEngagement(a.id)).slice(0, 5);
+      const lbTable = document.getElementById('leaderboard-table');
+      if (lbTable) {
+        lbTable.innerHTML = lb.map((m, i) =>
+          `<tr><td style="width:30px">#${i + 1}</td><td>${formatName(m)}</td><td style="text-align:right; font-weight:600">${getEngagement(m.id)}%</td></tr>`
+        ).join('');
+      }
+
+      const viewableMembers = currentUser.role === 'admin' ? state.members : state.members.filter(m => m.id === currentUser.id);
+
+      // Attendance
+      const actSess = state.sessions.find(s => s.active);
+      const btnSignin = document.getElementById('btn-signin');
+      if (btnSignin) btnSignin.style.display = (currentUser.role === 'member' && actSess) ? 'inline-block' : 'none';
+
+      const attTable = document.getElementById('att-table');
+      if (attTable) {
+        let aH = `<tr><th>Member</th>${state.sessions.map(s => `<th>${esc(s.label)}${s.active ? ' <span style="color:var(--success)">●</span>' : ''}</th>`).join('')}<th>Rate</th></tr>`;
+        viewableMembers.forEach(m => {
+          aH += `<tr><td>${formatName(m)}</td>`;
+          state.sessions.forEach(s => {
+            const rec = state.attendance.find(a => a.member_id === m.id && a.session_id === s.id);
+            const st = rec ? rec.status : 'none';
+            const dis = currentUser.role === 'admin' ? '' : 'disabled';
+            aH += `<td><button class="att-btn ${esc(st)}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st === 'present' ? '✓' : st === 'absent' ? '✕' : ''}</button></td>`;
+          });
+          aH += `<td>${getAttRate(m.id)}%</td></tr>`;
+        });
+        attTable.innerHTML = aH;
+      }
+
+      // Tasks
+      const renderT = (list, tblId) => {
+        const tbl = document.getElementById(tblId);
+        if (!tbl) return;
+        let h = `<tr><th>Task</th><th>Assignees</th><th>Phase</th><th>Submission</th><th>Status</th><th class="admin-only">Act</th></tr>`;
+        list.forEach(t => {
+          const ph = state.phases.find(x => x.id === t.phase_id) || {};
+          const assignedMids = state.task_assignees.filter(a => a.task_id === t.id).map(a => a.member_id);
+          const isAssigned = assignedMids.includes(currentUser.id);
+          const canEdit = currentUser.role === 'admin' || (currentUser.role === 'member' && isAssigned && !ph.locked);
+
+          const mN = assignedMids.map(id => {
+            const member = state.members.find(x => x.id === id); return member ? formatName(member) : '';
+          }).filter(Boolean).join(', ');
+
+          const opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
+          const fileInfo = t.file_name ? `<a href="${safeUrl(t.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+
+          h += `<tr>
+            <td><div style="font-weight:600; margin-bottom:4px">${esc(t.description)}</div></td>
+            <td><span class="text-muted" style="font-size:12px">${mN || 'None'}</span></td>
+            <td><span class="badge">${esc(ph.name || '?')}</span> ${ph.locked ? '🔒' : ''}</td>
+            <td>
+              ${fileInfo}<br>
+              ${canEdit ? `<input type="file" onchange="uploadFile('tasks', '${esc(t.id)}', this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}
+              <input type="text" placeholder="References" value="${esc(t.references_text || '')}" onchange="updRecord('tasks','${esc(t.id)}','references_text',this.value)" ${!canEdit ? 'disabled' : ''} style="font-size:12px; padding:0.25rem; margin-top:4px">
+            </td>
+            <td><select onchange="updRecord('tasks','${esc(t.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
+            <td class="admin-only"><button class="btn btn-sm btn-danger" onclick="delRecord('tasks','${esc(t.id)}')">Del</button></td>
+          </tr>`;
+        });
+        tbl.innerHTML = h;
+      };
+      renderT(state.tasks.filter(t => t.status !== 'done'), 'tasks-current');
+      renderT(state.tasks.filter(t => t.status === 'done'), 'tasks-history');
+
+      // Reports
+      const repTable = document.getElementById('reports-table');
+      if (repTable) {
+        let rH = `<tr><th>Report Type</th><th>Document Upload</th><th>Status</th><th class="admin-only">Act</th></tr>`;
+        state.reports.forEach(r => {
+          const canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
+          const opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
+          const rFileInfo = r.file_name ? `<a href="${safeUrl(r.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+
+          rH += `<tr>
+          <td style="font-weight:600">${esc(r.report_type)}</td>
+          <td>${rFileInfo}<br>${canEdit ? `<input type="file" onchange="uploadFile('reports', '${esc(r.id)}', this)" style="margin-top:4px; font-size:11px; padding:0.2rem">` : ''}</td>
+          <td><select onchange="updRecord('reports','${esc(r.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
+          <td class="admin-only"><button class="btn btn-sm btn-danger" onclick="delRecord('reports','${esc(r.id)}')">Del</button></td>
+        </tr>`;
+        });
+        repTable.innerHTML = rH;
+      }
+
+      // Certs
+      const certsTable = document.getElementById('certs-table');
+      if (certsTable) {
+        let cH = `<tr><th>Member</th><th>Att %</th><th>Task %</th><th>Rep %</th><th>Total Eng</th><th>Eligibility</th></tr>`;
+        viewableMembers.forEach(m => {
+          const e = getEngagement(m.id);
+          const aR = getAttRate(m.id), tR = getTaskRate(m.id), rpR = getRepRate();
+          const eligible = aR >= 90 && tR >= 90 && rpR >= 90;
+          cH += `<tr>
+          <td><b>${formatName(m)}</b></td>
+          <td><span class="badge ${aR >= 90 ? 'success' : 'danger'}">${aR}%</span></td>
+          <td><span class="badge ${tR >= 90 ? 'success' : 'danger'}">${tR}%</span></td>
+          <td><span class="badge ${rpR >= 90 ? 'success' : 'danger'}">${rpR}%</span></td>
+          <td><span class="badge ${e >= 90 ? 'success' : 'warning'}">${e}%</span></td>
+          <td>${eligible ? '<span style="color:var(--success); font-weight:600">✓ Certified</span>' : '<span class="text-muted">Ineligible</span>'}</td>
+        </tr>`;
+        });
+        certsTable.innerHTML = cH;
+      }
+
+      // Admin phases
+      const phasesTable = document.getElementById('phases-table');
+      if (phasesTable) {
+        phasesTable.innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` +
+          state.phases.map(p => `<tr><td>${esc(p.name)}</td><td>${p.locked ? '🔒 Locked' : '🔓 Open'}</td>
+          <td><button class="btn btn-sm" onclick="updRecord('phases','${esc(p.id)}','locked',${!p.locked})">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delRecord('phases','${esc(p.id)}')">Del</button></td></tr>`).join('');
+      }
+
+      // Render visual analytics
+      renderCharts();
+    }
+
+    // ─── Database Actions (Direct DB Updates) ────────────────────────────────────
+
+    window.editOverview = function () {
+      if (currentUser.role !== 'admin') return;
+      openModal('Edit Project Overview', `
+        <div class="form-group"><label for="ov-text">Overview Content</label>
+        <textarea id="ov-text" rows="10" style="min-height:200px">${esc(state.overview)}</textarea></div>
+      `, async () => {
+        const txt = document.getElementById('ov-text').value;
+        const { error } = await sb.from('project_overview').update({ content: txt }).eq('id', 1);
+        if (error) { alert(error.message); return false; }
+        await fetchData();
+      });
+    };
+
+    window.addPhase = async function () {
+      if (currentUser.role !== 'admin') return;
+      const n = prompt('Phase name:');
+      if (n) {
+        const { error } = await sb.from('phases').insert({ name: n });
+        if (error) alert('Error: ' + error.message);
+        else await fetchData();
+      }
+    };
+
+    window.addReport = async function () {
+      if (currentUser.role !== 'admin') return;
+      const n = prompt('Report Title (e.g. Methodology):');
+      if (n) {
+        const { error } = await sb.from('reports').insert({ report_type: n });
+        if (error) alert('Error: ' + error.message);
+        else await fetchData();
+      }
+    };
+
+    window.manageSessions = function () {
+      if (currentUser.role !== 'admin') return;
+      const html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
+        <span>${esc(s.label)} ${s.active ? '<span style="color:var(--success)">● Active</span>' : ''}</span>
+        <div class="flex-gap">
+          <button class="btn btn-sm" onclick="updRecord('sessions','${esc(s.id)}','active',${!s.active}); closeModal();">Toggle Active</button>
+          <button class="btn btn-sm btn-danger" onclick="delRecord('sessions','${esc(s.id)}'); closeModal();">Del</button>
+        </div></div>`).join('') +
+        `<div style="margin-top:1rem;"><input type="text" id="ns-name" placeholder="New session name">
+         <button class="btn btn-primary" style="margin-top:0.5rem; width:100%" onclick="addNewSession()">+ Create Session</button></div>`;
+      openModal('Manage Sessions', html, () => { });
+    };
+
+    window.addNewSession = async function () {
+      const n = document.getElementById('ns-name').value;
+      if (n) {
+        await sb.from('sessions').update({ active: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+        const { error } = await sb.from('sessions').insert({ label: n, active: true });
+        if (error) { alert('Error: ' + error.message); return; }
+        closeModal();
+        await fetchData();
+        manageSessions();
+      }
+    }
+
+    window.memberSignIn = async function () {
+      const act = state.sessions.find(s => s.active);
+      if (!act) return;
+      const { error } = await sb.from('attendance_records').upsert({ session_id: act.id, member_id: currentUser.id, status: 'present' });
+      if (error) alert(error.message); else { alert('Signed in successfully!'); fetchData(); }
+    };
+
+    window.togAtt = async function (mid, sid) {
+      if (currentUser.role !== 'admin') return;
+      const rec = state.attendance.find(a => a.member_id === mid && a.session_id === sid);
+      const curr = rec ? rec.status : 'none';
+      const nxt = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
+      const { error } = await sb.from('attendance_records').upsert({ session_id: sid, member_id: mid, status: nxt });
+      if (error) alert('Error: ' + error.message);
+      else await fetchData();
+    };
+
+    window.openTaskModal = function () {
+      if (currentUser.role !== 'admin') return;
+      const mO = state.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+      const pO = state.phases.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+      openModal('New Task', `
+        <div class="form-group"><label for="tm-desc">Description</label><input type="text" id="tm-desc"></div>
+        <div class="form-group"><label for="tm-ph">Phase</label><select id="tm-ph">${pO}</select></div>
+        <div class="form-group"><label for="tm-mids">Assignees (Ctrl/Cmd+Click for multiple)</label><select id="tm-mids" multiple size="4">${mO}</select></div>
+      `, async () => {
+        const desc = document.getElementById('tm-desc').value;
+        const phaseId = document.getElementById('tm-ph').value;
+        const mids = Array.from(document.getElementById('tm-mids').selectedOptions).map(x => x.value);
+        if (!desc) { alert('Description required'); return false; }
+
+        const { data: newTask, error } = await sb.from('tasks').insert({ description: desc, phase_id: phaseId }).select().single();
+        if (error) { alert('Error inserting task: ' + error.message); return false; }
+
+        if (mids.length > 0) {
+          const assignData = mids.map(mid => ({ task_id: newTask.id, member_id: mid }));
+          const { error: assignError } = await sb.from('task_assignees').insert(assignData);
+          if (assignError) alert('Error assigning members: ' + assignError.message);
+        }
+        await fetchData();
+      });
+    };
+
+    window.updRecord = async function (table, id, field, val) {
+      const { error } = await sb.from(table).update({ [field]: val }).eq('id', id);
+      if (error) alert('Error updating record: ' + error.message);
+      else await fetchData();
+    };
+
+    window.delRecord = async function (table, id) {
+      if (!confirm('Delete this item?')) return;
+      const { error } = await sb.from(table).delete().eq('id', id);
+      if (error) alert('Error deleting record: ' + error.message);
+      else await fetchData();
+    };
+
+    // ─── Secure File Uploads ─────────────────────────────────────────────────────
+    window.uploadFile = async function (table, recordId, input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      input.disabled = true;
+
+      try {
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${table}/${Date.now()}_${safeName}`;
+
+        const { error: uploadError } = await sb.storage.from('uploads').upload(path, file);
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
+
+        await sb.from(table).update({ file_url: urlData.publicUrl, file_name: file.name }).eq('id', recordId);
+
+        fetchData();
+      } catch (e) {
+        alert('Upload failed: ' + e.message);
+        input.disabled = false;
+      }
+    };
+
+    // ─── UI Helpers ──────────────────────────────────────────────────────────────
+    function switchTab(t) {
+      document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(t).classList.add('active');
+      const btn = document.querySelector(`.tab-btn[onclick="switchTab('${t}')"]`);
+      if (btn) btn.classList.add('active');
+    }
+
+    function openModal(title, html, onSave) {
+      document.getElementById('m-title').textContent = title;
+      document.getElementById('m-body').innerHTML = html;
+      document.getElementById('modal').style.display = 'flex';
+      document.getElementById('m-save').onclick = async () => {
+        const result = await onSave();
+        if (result !== false) closeModal();
+      };
+    }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+    function updateClock() {
+      const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      document.getElementById('realtime-clock').textContent = new Date().toLocaleString(undefined, options);
+    }
+    setInterval(updateClock, 1000); updateClock();
+
     // ─── Initialization ──────────────────────────────────────────────────────────
     async function init() {
       // 1. FAILSAFE: Force the loading screen to hide after 3 seconds, no matter what.
@@ -743,6 +1242,9 @@
         await handleAuthSession(session);
       });
     }
+
+    // Start app
+    init();
   </script>
 </body>
 
