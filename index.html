@@ -727,12 +727,8 @@
         setTimeout(() => promptSetPassword(), 1000);
       }
 
-      // CRITICAL FIX: Bootstrap by explicitly checking for existing session FIRST.
-      // This guarantees the app loads on refresh, not just on first visit.
-      const { data: { session } } = await sb.auth.getSession();
-      await handleAuthSession(session);
-
-      // Then listen for future auth changes (login, logout, token refresh)
+      // FIX: Supabase v2 automatically fires 'INITIAL_SESSION' on load.
+      // We simply listen to this, preventing the double-execution race condition.
       sb.auth.onAuthStateChange(async (event, session) => {
         console.log("Auth state change:", event);
         await handleAuthSession(session);
@@ -884,7 +880,10 @@
 
       const ctxTask = document.getElementById('taskChart');
       if (ctxTask && currentUser.role !== 'none') {
-        if (taskChartInst) taskChartInst.destroy();
+        // Safely destroy existing chart on the canvas
+        const existingTaskChart = Chart.getChart(ctxTask);
+        if (existingTaskChart) existingTaskChart.destroy();
+
         const p = state.tasks.filter(t => t.status === 'pending').length;
         const i = state.tasks.filter(t => t.status === 'in progress').length;
         const d = state.tasks.filter(t => t.status === 'done').length;
@@ -901,7 +900,10 @@
 
       const ctxAtt = document.getElementById('attChart');
       if (ctxAtt && currentUser.role !== 'none') {
-        if (attChartInst) attChartInst.destroy();
+        // Safely destroy existing chart on the canvas
+        const existingAttChart = Chart.getChart(ctxAtt);
+        if (existingAttChart) existingAttChart.destroy();
+
         const labels = state.sessions.map(s => s.label);
         const data = state.sessions.map(s => state.attendance.filter(a => a.session_id === s.id && a.status === 'present').length);
 
