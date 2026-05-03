@@ -858,14 +858,20 @@
     async function logout() { await sb.auth.signOut(); }
 
     // ─── Data Fetching ───────────────────────────────────────────────────────────
+    let isFetchingData = false;
+
     async function fetchData() {
+      if (isFetchingData) return; // Prevent overlapping network requests
+      isFetchingData = true;
+
       try {
         const [
           { data: overview }, { data: phases }, { data: members },
           { data: sessions }, { data: attendance }, { data: tasks },
           { data: assignees }, { data: reports }
         ] = await Promise.all([
-          sb.from('project_overview').select('*').eq('id', 1).single(),
+          // CRITICAL FIX: Changed .single() to .maybeSingle() to prevent RLS crashes
+          sb.from('project_overview').select('*').eq('id', 1).maybeSingle(),
           sb.from('phases').select('*').order('created_at', { ascending: true }),
           sb.from('members').select('*'),
           sb.from('sessions').select('*').order('created_at', { ascending: true }),
@@ -875,7 +881,7 @@
           sb.from('reports').select('*').order('updated_at', { ascending: false })
         ]);
 
-        state.overview = overview ? overview.content : 'No overview provided.';
+        state.overview = overview ? overview.content : 'Welcome to the MIH Tracker.';
         state.phases = phases || [];
         state.members = members || [];
         state.sessions = sessions || [];
@@ -886,10 +892,11 @@
 
         renderAll();
       } catch (error) {
-        console.error("Error fetching data:", error); throw error;
+        console.error("Error fetching data:", error);
+      } finally {
+        isFetchingData = false; // Release the lock
       }
     }
-
     // ─── KPI Helpers ─────────────────────────────────────────────────────────────
     function getAttRate(mid) {
       if (!state.sessions.length) return 0;
@@ -1253,14 +1260,15 @@
 
     // ─── Initialization ──────────────────────────────────────────────────────────
     async function init() {
+      // FIX: Extended failsafe to 8 seconds for slower network routing
       setTimeout(() => {
         const loader = document.getElementById('app-loading');
         if (loader && loader.style.display !== 'none') {
           loader.style.display = 'none';
           applyRole();
-          console.warn("Failsafe triggered: Supabase took too long, forced app to open.");
+          console.warn("Failsafe triggered: Adjusted for network latency.");
         }
-      }, 3000);
+      }, 8000);
 
       try {
         const savedTheme = localStorage.getItem('mih_theme');
@@ -1281,8 +1289,6 @@
         await handleAuthSession(session);
       });
     }
-
-    init();
   </script>
 </body>
 
