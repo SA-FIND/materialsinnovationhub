@@ -158,12 +158,10 @@
       margin-bottom: 1.5rem;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      /* Firefox */
     }
 
     .tabs::-webkit-scrollbar {
       display: none;
-      /* Chrome/Safari */
     }
 
     .tab-btn {
@@ -453,18 +451,15 @@
     @media (max-width: 768px) {
       body {
         padding: 1rem;
-        /* Reduced screen padding */
       }
 
       .glass-panel {
         padding: 1.25rem 1rem;
-        /* Slightly tighter panels */
       }
 
       header {
         flex-direction: column;
         align-items: center;
-        /* Center logo area */
         text-align: center;
         gap: 1.25rem;
       }
@@ -480,7 +475,6 @@
         gap: 0.75rem;
       }
 
-      /* Hide clock on mobile to save precious action bar space */
       #realtime-clock {
         display: none;
       }
@@ -489,7 +483,6 @@
         grid-template-columns: 1fr !important;
       }
 
-      /* Force KPIs into 2 columns on mobile so they don't stack infinitely */
       .kpi-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
@@ -512,11 +505,9 @@
 
       .flex-between .btn {
         flex: 1;
-        /* Stretch buttons in toolbars */
         text-align: center;
       }
 
-      /* Make table content scroll nicely instead of squishing */
       th,
       td {
         font-size: 13px;
@@ -524,7 +515,6 @@
         white-space: nowrap;
       }
 
-      /* Allow task descriptions to wrap so they are readable */
       #tasks-current td:first-child,
       #tasks-history td:first-child {
         white-space: normal;
@@ -537,15 +527,12 @@
 
       .btn {
         padding: 0.6rem 1rem;
-        /* Larger touch targets */
       }
     }
 
-    /* For very small phones */
     @media (max-width: 400px) {
       .kpi-grid {
         grid-template-columns: 1fr;
-        /* Fall back to single column if extremely narrow */
       }
     }
   </style>
@@ -748,6 +735,7 @@
     // ─── Supabase Configuration ──────────────────────────────────────────────────
     const SUPABASE_URL = 'https://grvbyxkilrobyrbsqqqr.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydmJ5eGtpbHJvYnlyYnNxcXFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODYzNzIsImV4cCI6MjA5MzA2MjM3Mn0.LT_bydOKCEAgyfUnFq0Wz1lSzEIxNhHaI-JHkkGH4WA';
+
     // FIX FOR ISSUE #22508: Use a custom storageKey to abandon the deadlocked auth file
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
@@ -776,15 +764,16 @@
     async function handleAuthSession(session) {
       try {
         if (session && session.user) {
+          // FIX: Use maybeSingle() so the app doesn't crash if the database was wiped
           const { data: memberData, error } = await sb.from('members')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
 
           if (memberData) {
             currentUser = { role: memberData.role, id: memberData.id, name: memberData.name };
           } else {
-            currentUser = { role: 'member', id: session.user.id, name: 'New User' };
+            currentUser = { role: 'member', id: session.user.id, name: 'Restored User' };
           }
         } else {
           currentUser = { role: 'none', id: null, name: '' };
@@ -798,7 +787,6 @@
           await fetchData();
         } catch (fetchErr) {
           console.error("fetchData error:", fetchErr);
-          document.getElementById('overview-content').textContent = 'Error loading data. Please refresh.';
         }
         const loader = document.getElementById('app-loading');
         if (loader) loader.style.display = 'none';
@@ -917,6 +905,7 @@
         isFetchingData = false; // Release the lock
       }
     }
+
     // ─── KPI Helpers ─────────────────────────────────────────────────────────────
     function getAttRate(mid) {
       if (!state.sessions.length) return 0;
@@ -1294,11 +1283,13 @@
         setTimeout(() => promptSetPassword(), 1000);
       }
 
-      sb.auth.onAuthStateChange(async (event, session) => {
+      sb.auth.onAuthStateChange((event, session) => {
         console.log("Auth state change:", event);
-        await handleAuthSession(session);
+        handleAuthSession(session);
       });
     }
+
+    init();
   </script>
 </body>
 
