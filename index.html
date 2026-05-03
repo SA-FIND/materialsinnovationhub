@@ -732,10 +732,33 @@
   </div>
 
   <script>
+    // ─── ABSOLUTE FAILSAFE ───────────────────────────────────────────────────────
+    // Placed before ANY Supabase code so it cannot be blocked by deadlocks
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const loader = document.getElementById('app-loading');
+        if (loader && loader.style.display !== 'none') {
+          loader.style.display = 'none';
+          document.body.setAttribute('data-role', 'none');
+          console.warn("Absolute Failsafe triggered: Bypassed script deadlock.");
+        }
+      }, 4000);
+    });
+
+    // ─── Supabase Configuration ──────────────────────────────────────────────────
+    const SUPABASE_URL = 'https://grvbyxkilrobyrbsqqqr.supabase.co';
+    // ... (rest of your keys)
     // ─── Supabase Configuration ──────────────────────────────────────────────────
     const SUPABASE_URL = 'https://grvbyxkilrobyrbsqqqr.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydmJ5eGtpbHJvYnlyYnNxcXFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODYzNzIsImV4cCI6MjA5MzA2MjM3Mn0.LT_bydOKCEAgyfUnFq0Wz1lSzEIxNhHaI-JHkkGH4WA';
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // FIX FOR ISSUE #22508: Use a custom storageKey to abandon the deadlocked auth file
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        storageKey: 'mih_tracker_auth_v2',
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    });
 
     // ─── Local State Cache ───────────────────────────────────────────────────────
     let state = {
@@ -1260,16 +1283,6 @@
 
     // ─── Initialization ──────────────────────────────────────────────────────────
     async function init() {
-      // FIX: Extended failsafe to 8 seconds for slower network routing
-      setTimeout(() => {
-        const loader = document.getElementById('app-loading');
-        if (loader && loader.style.display !== 'none') {
-          loader.style.display = 'none';
-          applyRole();
-          console.warn("Failsafe triggered: Adjusted for network latency.");
-        }
-      }, 8000);
-
       try {
         const savedTheme = localStorage.getItem('mih_theme');
         if (savedTheme) {
