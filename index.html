@@ -708,7 +708,18 @@
     }
     // ─── Initialization ──────────────────────────────────────────────────────────
     async function init() {
-      // Load saved theme
+      // 1. FAILSAFE: Force the loading screen to hide after 3 seconds, no matter what.
+      // This guarantees your app will never get permanently stuck again.
+      setTimeout(() => {
+        const loader = document.getElementById('app-loading');
+        if (loader && loader.style.display !== 'none') {
+          loader.style.display = 'none';
+          applyRole(); // Ensures the UI buttons become clickable
+          console.warn("Failsafe triggered: Supabase took too long, forced app to open.");
+        }
+      }, 3000);
+
+      // 2. Load saved theme
       try {
         const savedTheme = localStorage.getItem('mih_theme');
         if (savedTheme) {
@@ -726,16 +737,11 @@
         setTimeout(() => promptSetPassword(), 1000);
       }
 
-      // 1. Listen for FUTURE auth changes (logins, logouts), but ignore the auto-trigger
+      // 3. Let Supabase handle the session asynchronously without blocking the UI
       sb.auth.onAuthStateChange(async (event, session) => {
         console.log("Auth state change:", event);
-        if (event === 'INITIAL_SESSION') return; // Prevent the collision bug
         await handleAuthSession(session);
       });
-
-      // 2. EXPLICITLY force the initial load right now so it never gets stuck
-      const { data: { session } } = await sb.auth.getSession();
-      await handleAuthSession(session);
     }
   </script>
 </body>
