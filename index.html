@@ -1168,18 +1168,71 @@
     window.memberSignIn = async function () {
       const act = state.sessions.find(s => s.active);
       if (!act) return;
-      const { error } = await sb.from('attendance_records').upsert({ session_id: act.id, member_id: currentUser.id, status: 'present' });
-      if (error) alert(error.message); else { alert('Signed in successfully!'); fetchData(); }
+
+      // 1. Explicitly check if the record exists to bypass Supabase upsert/RLS silent failures
+      const { data: existing } = await sb.from('attendance_records')
+        .select('*')
+        .eq('session_id', act.id)
+        .eq('member_id', currentUser.id)
+        .maybeSingle();
+
+      let opError;
+
+      // 2. Force an explicit UPDATE or INSERT based on existence
+      if (existing) {
+        const { error } = await sb.from('attendance_records')
+          .update({ status: 'present' })
+          .eq('session_id', act.id)
+          .eq('member_id', currentUser.id);
+        opError = error;
+      } else {
+        const { error } = await sb.from('attendance_records')
+          .insert({ session_id: act.id, member_id: currentUser.id, status: 'present' });
+        opError = error;
+      }
+
+      if (opError) {
+        alert("Error saving attendance: " + opError.message);
+      } else {
+        alert('Signed in successfully!');
+        await fetchData(); // Force the UI to wait for the fresh data before re-rendering
+      }
     };
 
     window.togAtt = async function (mid, sid) {
       if (currentUser.role !== 'admin') return;
+
       const rec = state.attendance.find(a => a.member_id === mid && a.session_id === sid);
       const curr = rec ? rec.status : 'none';
       const nxt = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
-      const { error } = await sb.from('attendance_records').upsert({ session_id: sid, member_id: mid, status: nxt });
-      if (error) alert('Error: ' + error.message);
-      else await fetchData();
+
+      // 1. Explicitly check existence
+      const { data: existing } = await sb.from('attendance_records')
+        .select('*')
+        .eq('session_id', sid)
+        .eq('member_id', mid)
+        .maybeSingle();
+
+      let opError;
+
+      // 2. Force explicit UPDATE or INSERT
+      if (existing) {
+        const { error } = await sb.from('attendance_records')
+          .update({ status: nxt })
+          .eq('session_id', sid)
+          .eq('member_id', mid);
+        opError = error;
+      } else {
+        const { error } = await sb.from('attendance_records')
+          .insert({ session_id: sid, member_id: mid, status: nxt });
+        opError = error;
+      }
+
+      if (opError) {
+        alert('Error: ' + opError.message);
+      } else {
+        await fetchData(); // Force the UI to wait for the fresh data
+      }
     };
 
     window.openTaskModal = function () {
