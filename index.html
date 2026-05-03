@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self';">
   <title>Materials Innovation Hub</title>
@@ -11,7 +11,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* CSS Remains unchanged to preserve your UI design */
     :root {
       --mih-blue: #010066;
       --mih-accent: #38bdf8;
@@ -157,6 +156,14 @@
       gap: 0.5rem;
       overflow-x: auto;
       margin-bottom: 1.5rem;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      /* Firefox */
+    }
+
+    .tabs::-webkit-scrollbar {
+      display: none;
+      /* Chrome/Safari */
     }
 
     .tab-btn {
@@ -223,6 +230,7 @@
       border-radius: 999px;
       font-size: 0.75rem;
       font-weight: 600;
+      white-space: nowrap;
     }
 
     .badge.success {
@@ -248,6 +256,13 @@
       padding: 2px 6px;
       border-radius: 4px;
       margin-left: 4px;
+      white-space: nowrap;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 1rem;
     }
 
     table {
@@ -262,6 +277,7 @@
       font-size: 0.75rem;
       text-transform: uppercase;
       border-bottom: 1px solid var(--panel-border);
+      white-space: nowrap;
     }
 
     td {
@@ -307,6 +323,7 @@
       align-items: center;
       justify-content: center;
       z-index: 100;
+      padding: 1rem;
     }
 
     .modal {
@@ -357,6 +374,7 @@
       background: transparent;
       cursor: pointer;
       color: var(--text-main);
+      flex-shrink: 0;
     }
 
     .att-btn.present {
@@ -431,44 +449,103 @@
       }
     }
 
+    /* ─── MOBILE OPTIMIZATIONS ─── */
     @media (max-width: 768px) {
+      body {
+        padding: 1rem;
+        /* Reduced screen padding */
+      }
+
+      .glass-panel {
+        padding: 1.25rem 1rem;
+        /* Slightly tighter panels */
+      }
+
       header {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
+        align-items: center;
+        /* Center logo area */
+        text-align: center;
+        gap: 1.25rem;
+      }
+
+      .logo-area {
+        flex-direction: column;
       }
 
       .controls-bar {
+        width: 100%;
+        justify-content: center;
         flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      /* Hide clock on mobile to save precious action bar space */
+      #realtime-clock {
+        display: none;
       }
 
       .dash-grid {
         grid-template-columns: 1fr !important;
       }
 
+      /* Force KPIs into 2 columns on mobile so they don't stack infinitely */
+      .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
+      .kpi-val {
+        font-size: 2rem;
+      }
+
       .flex-between {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
+        align-items: stretch;
+        gap: 1rem;
       }
 
       .flex-between .flex-gap {
         width: 100%;
-        justify-content: flex-start;
+        justify-content: space-between;
       }
 
-      .glass-panel {
-        padding: 1rem;
+      .flex-between .btn {
+        flex: 1;
+        /* Stretch buttons in toolbars */
+        text-align: center;
       }
 
-      .tabs {
-        padding-bottom: 0.5rem;
-      }
-
+      /* Make table content scroll nicely instead of squishing */
       th,
       td {
-        font-size: 12px;
-        padding: 0.75rem 0.25rem;
+        font-size: 13px;
+        padding: 0.75rem 0.5rem;
+        white-space: nowrap;
+      }
+
+      /* Allow task descriptions to wrap so they are readable */
+      #tasks-current td:first-child,
+      #tasks-history td:first-child {
+        white-space: normal;
+        min-width: 180px;
+      }
+
+      .modal {
+        padding: 1.5rem;
+      }
+
+      .btn {
+        padding: 0.6rem 1rem;
+        /* Larger touch targets */
+      }
+    }
+
+    /* For very small phones */
+    @media (max-width: 400px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+        /* Fall back to single column if extremely narrow */
       }
     }
   </style>
@@ -496,9 +573,9 @@
         </div>
         <div class="badge warning" style="font-size: 11px;">⏰ Deadline: Friday 11:59 PM</div>
         <button class="btn" onclick="toggleTheme()">🌓 Theme</button>
-        <span id="user-status" style="font-weight: 600; margin-left: 1rem;">View Only</span>
-        <button class="btn" id="change-pwd-btn" style="display:none; margin-left: 0.5rem;"
-          onclick="promptSetPassword()">Set Password</button>
+        <span id="user-status" style="font-weight: 600; margin-left: 0.5rem; margin-right: 0.5rem;">View Only</span>
+        <button class="btn" id="change-pwd-btn" style="display:none;" onclick="promptSetPassword()">Set
+          Password</button>
         <button class="btn btn-primary" id="login-btn" onclick="openLogin()">Login</button>
         <button class="btn" id="logout-btn" style="display:none;" onclick="logout()">Logout</button>
       </div>
@@ -539,8 +616,8 @@
         </div>
         <div class="glass-panel">
           <h3>Engagement Leaderboard</h3>
-          <div class="auth-required">
-            <table style="margin-top: 1rem;" id="leaderboard-table"></table>
+          <div class="auth-required table-container">
+            <table id="leaderboard-table"></table>
           </div>
           <div class="auth-fallback text-muted" style="margin-top: 1rem;">Please log in to view the leaderboard.</div>
         </div>
@@ -573,7 +650,7 @@
             <button class="btn admin-only" onclick="manageSessions()">Manage Sessions</button>
           </div>
         </div>
-        <div class="auth-required" style="overflow-x: auto;">
+        <div class="auth-required table-container">
           <table id="att-table"></table>
         </div>
         <div class="auth-fallback text-muted">Please log in to view attendance records.</div>
@@ -587,13 +664,13 @@
           <h3>Current Tasks</h3>
           <button class="btn btn-primary admin-only" onclick="openTaskModal()">+ Add Task</button>
         </div>
-        <div style="overflow-x: auto;">
+        <div class="table-container">
           <table id="tasks-current"></table>
         </div>
       </div>
       <div class="glass-panel">
         <h3>Task History (Completed)</h3>
-        <div style="overflow-x: auto;">
+        <div class="table-container">
           <table id="tasks-history" class="history-table"></table>
         </div>
       </div>
@@ -606,7 +683,7 @@
           <h3>Master Project Reports</h3>
           <button class="btn btn-primary admin-only" onclick="addReport()">+ Add Report Type</button>
         </div>
-        <div style="overflow-x: auto;">
+        <div class="table-container">
           <table id="reports-table"></table>
         </div>
       </div>
@@ -617,9 +694,10 @@
       <div class="glass-panel">
         <div class="flex-between">
           <h3>Certification Eligibility</h3>
-          <p class="text-muted" style="font-size: 12px;">Requirements: Attendance ≥ 90%, Tasks ≥ 90%, Reports ≥ 90%</p>
+          <p class="text-muted" style="font-size: 12px; margin-top: 0.5rem;">Requirements: Attendance ≥ 90%, Tasks ≥
+            90%, Reports ≥ 90%</p>
         </div>
-        <div class="auth-required" style="overflow-x: auto;">
+        <div class="auth-required table-container">
           <table id="certs-table"></table>
         </div>
         <div class="auth-fallback text-muted">Please log in to view certification eligibility.</div>
@@ -633,7 +711,9 @@
           <h3>Manage Project Phases</h3>
           <button class="btn btn-primary" onclick="addPhase()">+ Add Phase</button>
         </div>
-        <table id="phases-table"></table>
+        <div class="table-container">
+          <table id="phases-table"></table>
+        </div>
       </div>
     </div>
 
@@ -643,7 +723,7 @@
   <div class="modal-overlay" id="modal">
     <div class="modal">
       <h3 id="m-title">Title</h3>
-      <div id="m-body"></div>
+      <div id="m-body" style="margin-top: 1rem;"></div>
       <div class="flex-gap" style="justify-content: flex-end; margin-top: 1.5rem;">
         <button class="btn" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary" id="m-save">Save</button>
@@ -693,7 +773,6 @@
         console.error("Auth session handler error:", err);
         currentUser = { role: 'none', id: null, name: '' };
       } finally {
-        // ALWAYS apply role and fetch data, even if member lookup fails
         applyRole();
         try {
           await fetchData();
@@ -701,7 +780,6 @@
           console.error("fetchData error:", fetchErr);
           document.getElementById('overview-content').textContent = 'Error loading data. Please refresh.';
         }
-        // Hide loading spinner once we've attempted to load
         const loader = document.getElementById('app-loading');
         if (loader) loader.style.display = 'none';
       }
@@ -710,11 +788,7 @@
     function toggleTheme() {
       state.theme = state.theme === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', state.theme);
-      try {
-        localStorage.setItem('mih_theme', state.theme);
-      } catch (e) {
-        console.warn("localStorage write denied", e);
-      }
+      try { localStorage.setItem('mih_theme', state.theme); } catch (e) { }
     }
 
     function applyRole() {
@@ -750,12 +824,8 @@
 
         errDiv.textContent = 'Saving...';
         const { error } = await sb.auth.updateUser({ password: password });
-        if (error) {
-          errDiv.textContent = 'Failed to set password: ' + error.message;
-          return false;
-        }
-        alert('Password successfully set!');
-        return true;
+        if (error) { errDiv.textContent = 'Failed to set password: ' + error.message; return false; }
+        alert('Password successfully set!'); return true;
       });
     }
 
@@ -777,14 +847,10 @@
         errDiv.textContent = 'Logging in...';
         try {
           const { error } = await sb.auth.signInWithPassword({ email, password });
-          if (error) {
-            errDiv.textContent = 'Login failed: ' + error.message;
-            return false;
-          }
+          if (error) { errDiv.textContent = 'Login failed: ' + error.message; return false; }
           return true;
         } catch (e) {
-          errDiv.textContent = 'System/Network Error: ' + e.message;
-          return false;
+          errDiv.textContent = 'System/Network Error: ' + e.message; return false;
         }
       });
     }
@@ -820,8 +886,7 @@
 
         renderAll();
       } catch (error) {
-        console.error("Error fetching data:", error);
-        throw error;
+        console.error("Error fetching data:", error); throw error;
       }
     }
 
@@ -852,7 +917,6 @@
 
       const ctxTask = document.getElementById('taskChart');
       if (ctxTask && currentUser.role !== 'none') {
-        // Safely destroy existing chart on the canvas
         const existingTaskChart = Chart.getChart(ctxTask);
         if (existingTaskChart) existingTaskChart.destroy();
 
@@ -872,7 +936,6 @@
 
       const ctxAtt = document.getElementById('attChart');
       if (ctxAtt && currentUser.role !== 'none') {
-        // Safely destroy existing chart on the canvas
         const existingAttChart = Chart.getChart(ctxAtt);
         if (existingAttChart) existingAttChart.destroy();
 
@@ -906,11 +969,9 @@
     }
 
     function renderAll() {
-      // Overview
       const ovEl = document.getElementById('overview-content');
       if (ovEl) ovEl.textContent = state.overview;
 
-      // KPIs
       let tA = 0, tE = 0, tD = state.tasks.filter(t => t.status === 'done').length;
       state.members.forEach(m => { tA += getAttRate(m.id); tE += getEngagement(m.id); });
       const kpiAtt = document.getElementById('kpi-att');
@@ -920,7 +981,6 @@
       if (kpiHealth) kpiHealth.textContent = state.members.length ? `${Math.round(tE / state.members.length)}%` : '0%';
       if (kpiTasks) kpiTasks.textContent = tD;
 
-      // Leaderboard
       const lb = [...state.members].sort((a, b) => getEngagement(b.id) - getEngagement(a.id)).slice(0, 5);
       const lbTable = document.getElementById('leaderboard-table');
       if (lbTable) {
@@ -931,7 +991,6 @@
 
       const viewableMembers = currentUser.role === 'admin' ? state.members : state.members.filter(m => m.id === currentUser.id);
 
-      // Attendance
       const actSess = state.sessions.find(s => s.active);
       const btnSignin = document.getElementById('btn-signin');
       if (btnSignin) btnSignin.style.display = (currentUser.role === 'member' && actSess) ? 'inline-block' : 'none';
@@ -952,7 +1011,6 @@
         attTable.innerHTML = aH;
       }
 
-      // Tasks
       const renderT = (list, tblId) => {
         const tbl = document.getElementById(tblId);
         if (!tbl) return;
@@ -968,7 +1026,7 @@
           }).filter(Boolean).join(', ');
 
           const opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
-          const fileInfo = t.file_name ? `<a href="${safeUrl(t.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(t.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+          const fileInfo = t.file_name ? `<a href="${safeUrl(t.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px; white-space:nowrap;">📎 ${esc(t.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
 
           h += `<tr>
             <td><div style="font-weight:600; margin-bottom:4px">${esc(t.description)}</div></td>
@@ -988,14 +1046,13 @@
       renderT(state.tasks.filter(t => t.status !== 'done'), 'tasks-current');
       renderT(state.tasks.filter(t => t.status === 'done'), 'tasks-history');
 
-      // Reports
       const repTable = document.getElementById('reports-table');
       if (repTable) {
         let rH = `<tr><th>Report Type</th><th>Document Upload</th><th>Status</th><th class="admin-only">Act</th></tr>`;
         state.reports.forEach(r => {
           const canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
           const opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
-          const rFileInfo = r.file_name ? `<a href="${safeUrl(r.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px">📎 ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
+          const rFileInfo = r.file_name ? `<a href="${safeUrl(r.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px; white-space:nowrap;">📎 ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file</span>';
 
           rH += `<tr>
           <td style="font-weight:600">${esc(r.report_type)}</td>
@@ -1007,7 +1064,6 @@
         repTable.innerHTML = rH;
       }
 
-      // Certs
       const certsTable = document.getElementById('certs-table');
       if (certsTable) {
         let cH = `<tr><th>Member</th><th>Att %</th><th>Task %</th><th>Rep %</th><th>Total Eng</th><th>Eligibility</th></tr>`;
@@ -1027,7 +1083,6 @@
         certsTable.innerHTML = cH;
       }
 
-      // Admin phases
       const phasesTable = document.getElementById('phases-table');
       if (phasesTable) {
         phasesTable.innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` +
@@ -1035,11 +1090,10 @@
           <td><button class="btn btn-sm" onclick="updRecord('phases','${esc(p.id)}','locked',${!p.locked})">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delRecord('phases','${esc(p.id)}')">Del</button></td></tr>`).join('');
       }
 
-      // Render visual analytics
       renderCharts();
     }
 
-    // ─── Database Actions (Direct DB Updates) ────────────────────────────────────
+    // ─── Database Actions ────────────────────────────────────────────────────────
 
     window.editOverview = function () {
       if (currentUser.role !== 'admin') return;
@@ -1059,8 +1113,7 @@
       const n = prompt('Phase name:');
       if (n) {
         const { error } = await sb.from('phases').insert({ name: n });
-        if (error) alert('Error: ' + error.message);
-        else await fetchData();
+        if (error) alert('Error: ' + error.message); else await fetchData();
       }
     };
 
@@ -1069,8 +1122,7 @@
       const n = prompt('Report Title (e.g. Methodology):');
       if (n) {
         const { error } = await sb.from('reports').insert({ report_type: n });
-        if (error) alert('Error: ' + error.message);
-        else await fetchData();
+        if (error) alert('Error: ' + error.message); else await fetchData();
       }
     };
 
@@ -1078,7 +1130,7 @@
       if (currentUser.role !== 'admin') return;
       const html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
         <span>${esc(s.label)} ${s.active ? '<span style="color:var(--success)">● Active</span>' : ''}</span>
-        <div class="flex-gap">
+        <div class="flex-gap" style="width:auto; justify-content:flex-end;">
           <button class="btn btn-sm" onclick="updRecord('sessions','${esc(s.id)}','active',${!s.active}); closeModal();">Toggle Active</button>
           <button class="btn btn-sm btn-danger" onclick="delRecord('sessions','${esc(s.id)}'); closeModal();">Del</button>
         </div></div>`).join('') +
@@ -1093,9 +1145,7 @@
         await sb.from('sessions').update({ active: false }).neq('id', '00000000-0000-0000-0000-000000000000');
         const { error } = await sb.from('sessions').insert({ label: n, active: true });
         if (error) { alert('Error: ' + error.message); return; }
-        closeModal();
-        await fetchData();
-        manageSessions();
+        closeModal(); await fetchData(); manageSessions();
       }
     }
 
@@ -1112,8 +1162,7 @@
       const curr = rec ? rec.status : 'none';
       const nxt = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
       const { error } = await sb.from('attendance_records').upsert({ session_id: sid, member_id: mid, status: nxt });
-      if (error) alert('Error: ' + error.message);
-      else await fetchData();
+      if (error) alert('Error: ' + error.message); else await fetchData();
     };
 
     window.openTaskModal = function () {
@@ -1144,15 +1193,13 @@
 
     window.updRecord = async function (table, id, field, val) {
       const { error } = await sb.from(table).update({ [field]: val }).eq('id', id);
-      if (error) alert('Error updating record: ' + error.message);
-      else await fetchData();
+      if (error) alert('Error updating record: ' + error.message); else await fetchData();
     };
 
     window.delRecord = async function (table, id) {
       if (!confirm('Delete this item?')) return;
       const { error } = await sb.from(table).delete().eq('id', id);
-      if (error) alert('Error deleting record: ' + error.message);
-      else await fetchData();
+      if (error) alert('Error deleting record: ' + error.message); else await fetchData();
     };
 
     // ─── Secure File Uploads ─────────────────────────────────────────────────────
@@ -1171,11 +1218,9 @@
         const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
 
         await sb.from(table).update({ file_url: urlData.publicUrl, file_name: file.name }).eq('id', recordId);
-
         fetchData();
       } catch (e) {
-        alert('Upload failed: ' + e.message);
-        input.disabled = false;
+        alert('Upload failed: ' + e.message); input.disabled = false;
       }
     };
 
@@ -1201,49 +1246,42 @@
 
     function updateClock() {
       const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-      document.getElementById('realtime-clock').textContent = new Date().toLocaleString(undefined, options);
+      const clockEl = document.getElementById('realtime-clock');
+      if (clockEl) clockEl.textContent = new Date().toLocaleString(undefined, options);
     }
     setInterval(updateClock, 1000); updateClock();
 
     // ─── Initialization ──────────────────────────────────────────────────────────
     async function init() {
-      // 1. FAILSAFE: Force the loading screen to hide after 3 seconds, no matter what.
-      // This guarantees your app will never get permanently stuck again.
       setTimeout(() => {
         const loader = document.getElementById('app-loading');
         if (loader && loader.style.display !== 'none') {
           loader.style.display = 'none';
-          applyRole(); // Ensures the UI buttons become clickable
+          applyRole();
           console.warn("Failsafe triggered: Supabase took too long, forced app to open.");
         }
       }, 3000);
 
-      // 2. Load saved theme
       try {
         const savedTheme = localStorage.getItem('mih_theme');
         if (savedTheme) {
           state.theme = savedTheme;
           document.documentElement.setAttribute('data-theme', state.theme);
         }
-      } catch (e) {
-        console.warn("localStorage access denied", e);
-      }
+      } catch (e) { console.warn("localStorage access denied", e); }
 
-      // Check for invite/recovery links
       const hash = window.location.hash || '';
       const search = window.location.search || '';
       if (hash.includes('type=invite') || hash.includes('type=recovery') || search.includes('type=invite')) {
         setTimeout(() => promptSetPassword(), 1000);
       }
 
-      // 3. Let Supabase handle the session asynchronously without blocking the UI
       sb.auth.onAuthStateChange(async (event, session) => {
         console.log("Auth state change:", event);
         await handleAuthSession(session);
       });
     }
 
-    // Start app
     init();
   </script>
 </body>
