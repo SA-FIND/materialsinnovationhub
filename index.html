@@ -1178,7 +1178,8 @@
       const curr = rec ? rec.status : 'none';
       const nxt = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
       const { error } = await sb.from('attendance_records').upsert({ session_id: sid, member_id: mid, status: nxt });
-      if (error) alert('Error: ' + error.message); else await fetchData();
+      if (error) alert('Error: ' + error.message);
+      else await fetchData();
     };
 
     window.openTaskModal = function () {
