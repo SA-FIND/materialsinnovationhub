@@ -702,6 +702,25 @@
         <div class="auth-fallback text-muted">Please log in to view certification eligibility.</div>
       </div>
     </div>
+    <!-- LAB BOOK -->
+    <div id="labbook" class="view">
+      <div class="glass-panel" style="border-color: var(--mih-accent);">
+        <div class="flex-between">
+          <div>
+            <h3 style="color: var(--mih-accent);">Experimental Data Log</h3>
+            <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Record synthesis parameters for future
+              Machine Learning / RSM training.</p>
+          </div>
+          <!-- Visible to Admins and Members, hidden from Alumni -->
+          <button class="btn btn-primary auth-required" id="btn-add-log" onclick="openLabModal()">+ Add
+            Experiment</button>
+        </div>
+        <div class="table-container">
+          <table id="lab-table"></table>
+        </div>
+      </div>
+    </div>
+    <button class="tab-btn" onclick="switchTab('labbook')">🧪 Lab Book</button>
 
     <!-- ADMIN CONFIG -->
     <div id="admin" class="view">
@@ -780,6 +799,7 @@
         tasks: [],
         task_assignees: [],
         reports: []
+        lab_logs: []
       };
 
       let currentUser = { role: 'none', id: null, name: '' };
@@ -903,7 +923,8 @@
           const [
             { data: overview }, { data: phases }, { data: members },
             { data: sessions }, { data: attendance }, { data: tasks },
-            { data: assignees }, { data: reports }
+            { data: assignees }, { data: reports },
+            { data: lab_logs } // <-- ADDED THIS
           ] = await Promise.all([
             sb.from('project_overview').select('*').eq('id', 1).maybeSingle(),
             sb.from('phases').select('*').order('created_at', { ascending: true }),
@@ -912,7 +933,8 @@
             sb.from('attendance_records').select('*'),
             sb.from('tasks').select('*').order('updated_at', { ascending: false }),
             sb.from('task_assignees').select('*'),
-            sb.from('reports').select('*').order('updated_at', { ascending: false })
+            sb.from('reports').select('*').order('updated_at', { ascending: false }),
+            sb.from('lab_logs').select('*').order('created_at', { ascending: false }) // <-- ADDED THIS
           ]);
 
           state.overview = overview ? overview.content : 'Welcome to the MIH Tracker.';
@@ -923,6 +945,7 @@
           state.tasks = tasks || [];
           state.task_assignees = assignees || [];
           state.reports = reports || [];
+          state.lab_logs = lab_logs || []; // <-- ADDED THIS
 
           renderAll();
         } catch (error) {
@@ -1170,6 +1193,35 @@
         }
 
         renderCharts();
+        // --- LAB BOOK RENDERER ---
+        const labTable = document.getElementById('lab-table');
+        const btnAddLog = document.getElementById('btn-add-log');
+
+        if (btnAddLog) {
+          // Hide button from alumni
+          btnAddLog.style.display = (currentUser.role === 'admin' || currentUser.role === 'member') ? 'inline-block' : 'none';
+        }
+
+        if (labTable) {
+          let lH = `<tr><th>Date</th><th>Researcher</th><th>Experiment</th><th>Temp (°C)</th><th>Time (m)</th><th>Glycerol (%)</th><th>pH</th><th>Yield %</th><th class="admin-only">Act</th></tr>`;
+          state.lab_logs.forEach(log => {
+            const author = state.members.find(m => m.id === log.member_id);
+            const dateStr = new Date(log.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+            lH += `<tr>
+            <td style="font-size:12px;" class="text-muted">${dateStr}</td>
+            <td>${author ? formatName(author) : 'Unknown'}</td>
+            <td style="font-weight:600;">${esc(log.experiment_name)}</td>
+            <td>${esc(log.temp_c || '-')}</td>
+            <td>${esc(log.time_mins || '-')}</td>
+            <td>${esc(log.glycerol_pct || '-')}</td>
+            <td>${esc(log.ph_level || '-')}</td>
+            <td><span class="badge ${log.yield_percent >= 50 ? 'success' : 'warning'}">${esc(log.yield_percent || 0)}%</span></td>
+            <td class="admin-only"><button class="btn btn-sm btn-danger" onclick="delRecord('lab_logs','${esc(log.id)}')">Del</button></td>
+          </tr>`;
+          });
+          labTable.innerHTML = lH;
+        }
       }
 
       // ─── Database Actions ────────────────────────────────────────────────────────
@@ -1187,6 +1239,44 @@
         });
       };
 
+      window.openLabModal = function () {
+        // Security check: Only admins and members can add data
+        if (currentUser.role !== 'admin' && currentUser.role !== 'member') return;
+
+        openModal('Log Experimental Data', `
+        <div class="form-group"><label>Experiment Name / ID</label><input type="text" id="lm-name" placeholder="e.g. Film Batch 1"></div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+          <div class="form-group"><label>Temp (°C)</label><input type="number" id="lm-temp" placeholder="80"></div>
+          <div class="form-group"><label>Time (mins)</label><input type="number" id="lm-time" placeholder="45"></div>
+          <div class="form-group"><label>Glycerol (%)</label><input type="number" step="0.1" id="lm-gly" placeholder="25.0"></div>
+          <div class="form-group"><label>Wastewater pH</label><input type="number" step="0.1" id="lm-ph" placeholder="5.5"></div>
+          <div class="form-group" style="grid-column: span 2;"><label>Yield / Tensile Strength</label><input type="number" step="0.1" id="lm-yield" placeholder="Enter final result metric"></div>
+        </div>
+        <div class="form-group"><label>Observations / Notes</label><textarea id="lm-notes" rows="3" placeholder="Color changes, flexibility, brittleness..."></textarea></div>
+      `, async () => {
+          const name = document.getElementById('lm-name').value;
+          if (!name) { alert('Experiment Name is required'); return false; }
+
+          // Gather all the inputs to send to Supabase
+          const payload = {
+            member_id: currentUser.id,
+            experiment_name: name,
+            temp_c: document.getElementById('lm-temp').value || null,
+            time_mins: document.getElementById('lm-time').value || null,
+            glycerol_pct: document.getElementById('lm-gly').value || null,
+            ph_level: document.getElementById('lm-ph').value || null,
+            yield_percent: document.getElementById('lm-yield').value || null,
+            notes: document.getElementById('lm-notes').value
+          };
+
+          // Send to database
+          const { error } = await sb.from('lab_logs').insert(payload);
+          if (error) { alert('Error saving log: ' + error.message); return false; }
+
+          // Refresh the screen to show the new data
+          await fetchData();
+        });
+      };
       window.addPhase = async function () {
         if (currentUser.role !== 'admin') return;
         const n = prompt('Phase name:');
