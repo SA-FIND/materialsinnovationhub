@@ -8,8 +8,11 @@
     content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self';">
   <title>Materials Innovation Hub</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- OPTIMIZATION: Added 'defer' so scripts do not block the page from rendering visually -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+
   <style>
     :root {
       --mih-blue: #010066;
@@ -59,6 +62,9 @@
       background: var(--panel-bg);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
+      /* OPTIMIZATION: Force GPU acceleration for smooth scrolling on low-end mobile devices */
+      will-change: backdrop-filter;
+      transform: translateZ(0);
       border: 1px solid var(--panel-border);
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
@@ -76,7 +82,6 @@
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      /* Allows header to stack neatly if it runs out of room */
       gap: 1.5rem;
       margin-bottom: 1.5rem;
     }
@@ -86,12 +91,14 @@
       align-items: center;
       gap: 1rem;
       flex-shrink: 0;
-      /* Prevents logo from getting squished */
     }
 
     .logo-img {
       height: 48px;
+      width: 48px;
+      /* OPTIMIZATION: Explicit width prevents Cumulative Layout Shift (CLS) */
       border-radius: 8px;
+      object-fit: contain;
     }
 
     h1 {
@@ -109,7 +116,6 @@
       align-items: center;
       gap: 0.75rem;
       flex-wrap: wrap;
-      /* Allows buttons to wrap instead of forcing a scrollbar */
       justify-content: flex-end;
       flex-grow: 1;
     }
@@ -123,6 +129,9 @@
       cursor: pointer;
       transition: 0.2s;
       font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .btn:hover {
@@ -166,10 +175,8 @@
       overflow-x: auto;
       margin-bottom: 1.5rem;
       padding-bottom: 0.5rem;
-      /* Prevents the scrollbar from overlapping the buttons */
       -webkit-overflow-scrolling: touch;
       scrollbar-width: thin;
-      /* Makes the scrollbar look cleaner on modern browsers */
     }
 
     .tabs::-webkit-scrollbar {
@@ -377,14 +384,16 @@
     }
 
     .att-btn {
-      width: 32px;
-      height: 32px;
+      /* OPTIMIZATION: Increased from 32px to 44px to meet WCAG mobile touch target standards */
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       border: 1px solid var(--panel-border);
       background: transparent;
       cursor: pointer;
       color: var(--text-main);
       flex-shrink: 0;
+      font-size: 16px;
     }
 
     .att-btn.present {
@@ -539,6 +548,21 @@
 
       .btn {
         padding: 0.6rem 1rem;
+        min-height: 44px;
+        /* Ensure 44px touch target on mobile */
+      }
+
+      .btn-sm {
+        min-height: auto;
+      }
+
+      /* Keep small buttons small */
+
+      /* OPTIMIZATION: Prevent iOS Safari from aggressively zooming in when typing */
+      input,
+      select,
+      textarea {
+        font-size: 16px !important;
       }
     }
 
@@ -560,7 +584,9 @@
   <div class="app-container">
     <header>
       <div class="logo-area">
-        <img src="MIH Logo (1).png" alt="MIH Logo" class="logo-img" onerror="this.style.display='none'">
+        <!-- Explicit width/height added to prevent Layout Shift -->
+        <img src="MIH Logo (1).png" alt="MIH Logo" class="logo-img" width="48" height="48"
+          onerror="this.style.display='none'">
         <div>
           <h1>Materials Innovation Hub</h1>
           <div style="font-size: 12px; color: var(--text-muted);">Cassava Biopolymer Project Tracker</div>
@@ -700,7 +726,6 @@
             <p class="text-muted" style="font-size: 12px; margin-top: 0.5rem;">Requirements: Attendance ≥ 90%, Tasks ≥
               90%, Reports ≥ 90%</p>
           </div>
-          <!-- New Export Button -->
           <button class="btn btn-primary admin-only auth-required" onclick="exportGradesCSV()">📊 Export Grades</button>
         </div>
         <div class="auth-required table-container">
@@ -712,7 +737,6 @@
 
     <!-- LAB BOOK -->
     <div id="labbook" class="view">
-      <!-- New Chart Panel -->
       <div class="glass-panel" style="border-color: var(--mih-accent); margin-bottom: 1.5rem;">
         <div class="flex-between">
           <div>
@@ -726,7 +750,6 @@
         </div>
       </div>
 
-      <!-- Upgraded Data Table Panel -->
       <div class="glass-panel" style="border-color: var(--mih-accent);">
         <div class="flex-between">
           <div>
@@ -735,7 +758,6 @@
               Glycerol, pH, Yield.</p>
           </div>
           <div class="flex-gap">
-            <!-- The New CSV Import Button -->
             <label class="btn auth-required" style="cursor: pointer; margin: 0; background: var(--hover-bg);">
               📥 Import CSV
               <input type="file" accept=".csv" style="display: none;" onchange="importCSV(this)">
@@ -761,16 +783,12 @@
           </div>
         </div>
 
-        <!-- Chat History Area -->
         <div id="chat-box"
           style="height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; padding: 1rem; background: var(--input-bg); border-radius: 8px; border: 1px solid var(--panel-border); margin-top: 1rem;">
           <div class="text-muted text-center" style="margin-top: auto; margin-bottom: auto;">Loading messages...</div>
         </div>
 
-        <!-- Message Input Area -->
         <div class="auth-required" style="display: flex; flex-direction: column; margin-top: 1rem;">
-
-          <!-- Hidden Reply Banner -->
           <div id="reply-banner"
             style="display: none; background: var(--hover-bg); padding: 0.5rem 1rem; border-radius: 8px 8px 0 0; font-size: 11px; color: var(--mih-accent); align-items: center; justify-content: space-between; border: 1px solid var(--panel-border); border-bottom: none;">
             <span id="reply-text">Replying to...</span>
@@ -779,7 +797,6 @@
           </div>
 
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <!-- Paperclip Upload Button -->
             <label class="btn"
               style="height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 20px; padding: 0 1rem; cursor: pointer; margin: 0; font-size: 16px;">
               📎
@@ -817,21 +834,17 @@
 
     <!-- ADMIN CONFIG -->
     <div id="admin" class="view">
-
-      <!-- Restored Email Reminder Panel -->
       <div class="glass-panel" style="border-color: var(--mih-accent);">
         <div class="flex-between" style="margin-bottom: 0;">
           <div>
             <h3 style="color: var(--mih-accent);">Team Notifications</h3>
-            <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Send automated email reminders to
-              members
+            <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Send automated email reminders to members
               regarding pending tasks and upcoming deadlines.</p>
           </div>
           <button class="btn btn-primary" onclick="openEmailModal()">📩 Compose Email Blast</button>
         </div>
       </div>
 
-      <!-- Manage Phases Panel -->
       <div class="glass-panel">
         <div class="flex-between">
           <h3>Manage Project Phases</h3>
@@ -859,7 +872,6 @@
 
   <script>
     // ─── ABSOLUTE FAILSAFE ───────────────────────────────────────────────────────
-    // Placed before ANY Supabase code so it cannot be blocked by deadlocks
     window.addEventListener('load', () => {
       setTimeout(() => {
         const loader = document.getElementById('app-loading');
@@ -875,7 +887,6 @@
     const SUPABASE_URL = 'https://grvbyxkilrobyrbsqqqr.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydmJ5eGtpbHJvYnlyYnNxcXFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODYzNzIsImV4cCI6MjA5MzA2MjM3Mn0.LT_bydOKCEAgyfUnFq0Wz1lSzEIxNhHaI-JHkkGH4WA';
 
-    // FIX FOR ISSUE #22508: Use a custom storageKey to abandon the deadlocked auth file
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
         storageKey: 'mih_tracker_auth_v2',
@@ -940,13 +951,11 @@
     }
 
     function applyRole() {
-      // 1. Set the role attribute for CSS hiding/showing
       document.body.setAttribute('data-role', currentUser.role);
 
       let s = 'View Only';
       if (currentUser.role === 'admin') s = '👑 Admin';
       else if (currentUser.role === 'member') s = `👤 ${currentUser.name}`;
-      // 2. Add the Alumni status label
       else if (currentUser.role === 'alumni') s = `🎓 Alumni: ${currentUser.name}`;
 
       const userStatus = document.getElementById('user-status');
@@ -965,9 +974,9 @@
     // ─── Auth Functions ──────────────────────────────────────────────────────────
     function promptSetPassword() {
       const html = `
-  <div class="form-group"><label for="new-pwd">New Password</label><input type="password" id="new-pwd" placeholder="Enter new password (min 6 chars)"></div>
-  <div id="pwd-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
-`;
+        <div class="form-group"><label for="new-pwd">New Password</label><input type="password" id="new-pwd" placeholder="Enter new password (min 6 chars)"></div>
+        <div id="pwd-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
+      `;
       openModal('Set Your Password', html, async () => {
         const errDiv = document.getElementById('pwd-error');
         errDiv.textContent = '';
@@ -983,11 +992,11 @@
 
     function openLogin() {
       const html = `
-  <div id="log-box">
-    <div class="form-group"><label for="log-email">Email</label><input type="email" id="log-email" placeholder="Email address"></div>
-    <div class="form-group"><label for="log-pwd">Password</label><input type="password" id="log-pwd" placeholder="Password"></div>
-    <div id="login-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
-  </div>`;
+        <div id="log-box">
+          <div class="form-group"><label for="log-email">Email</label><input type="email" id="log-email" placeholder="Email address"></div>
+          <div class="form-group"><label for="log-pwd">Password</label><input type="password" id="log-pwd" placeholder="Password"></div>
+          <div id="login-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
+        </div>`;
 
       openModal('Login', html, async () => {
         const errDiv = document.getElementById('login-error');
@@ -1021,8 +1030,7 @@
           { data: overview }, { data: phases }, { data: members },
           { data: sessions }, { data: attendance }, { data: tasks },
           { data: assignees }, { data: reports },
-          { data: lab_logs },
-          { data: discussions }
+          { data: lab_logs }, { data: discussions }
         ] = await Promise.all([
           sb.from('project_overview').select('*').eq('id', 1).maybeSingle(),
           sb.from('phases').select('*').order('created_at', { ascending: true }),
@@ -1058,39 +1066,27 @@
       const libTable = document.getElementById('library-table');
       if (libTable) {
         let compiledFiles = [];
+        state.tasks.forEach(t => { if (t.file_url) compiledFiles.push({ name: t.file_name, url: t.file_url, source: 'Task', date: t.updated_at }); });
+        state.reports.forEach(r => { if (r.file_url) compiledFiles.push({ name: r.file_name, url: r.file_url, source: 'Report', date: r.updated_at }); });
+        state.discussions.forEach(d => { if (d.file_url) compiledFiles.push({ name: d.file_name, url: d.file_url, source: 'Chat', date: d.created_at }); });
 
-        // 1. Hunt for files in Tasks
-        state.tasks.forEach(t => {
-          if (t.file_url) compiledFiles.push({ name: t.file_name, url: t.file_url, source: 'Task', date: t.updated_at });
-        });
-        // 2. Hunt for files in Reports
-        state.reports.forEach(r => {
-          if (r.file_url) compiledFiles.push({ name: r.file_name, url: r.file_url, source: 'Report', date: r.updated_at });
-        });
-        // 3. Hunt for files in Discussions
-        state.discussions.forEach(d => {
-          if (d.file_url) compiledFiles.push({ name: d.file_name, url: d.file_url, source: 'Chat', date: d.created_at });
-        });
-
-        // Sort them so the newest files are always at the top
         compiledFiles.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         let libHtml = `<tr><th>File Name</th><th>Source Area</th><th>Upload Date</th><th>Action</th></tr>`;
-
         if (compiledFiles.length === 0) {
           libHtml += `<tr><td colspan="4" class="text-center text-muted" style="padding: 2rem;">No files have been uploaded to the project yet.</td></tr>`;
         } else {
           compiledFiles.forEach(f => {
             const dateStr = new Date(f.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-            // Make the source badge a different color depending on where it came from
             const badgeColor = f.source === 'Task' ? 'warning' : f.source === 'Report' ? 'success' : 'primary';
 
+            /* OPTIMIZATION: Added rel="noopener noreferrer" to external links for security/performance */
             libHtml += `<tr>
-         <td style="font-weight:600; font-size:13px;">${esc(f.name)}</td>
-         <td><span class="badge ${badgeColor}">${f.source}</span></td>
-         <td class="text-muted" style="font-size:12px;">${dateStr}</td>
-         <td><a href="${safeUrl(f.url)}" target="_blank" class="btn btn-sm btn-primary" style="text-decoration:none;">Download</a></td>
-       </tr>`;
+              <td style="font-weight:600; font-size:13px;">${esc(f.name)}</td>
+              <td><span class="badge ${badgeColor}">${f.source}</span></td>
+              <td class="text-muted" style="font-size:12px;">${dateStr}</td>
+              <td><a href="${safeUrl(f.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary" style="text-decoration:none;">Download</a></td>
+            </tr>`;
           });
         }
         libTable.innerHTML = libHtml;
@@ -1159,15 +1155,12 @@
         });
       }
 
-      // --- LAB BOOK CHART ---
       const ctxLab = document.getElementById('labChart');
       if (ctxLab && state.lab_logs && state.lab_logs.length > 0) {
         const existingLabChart = Chart.getChart(ctxLab);
         if (existingLabChart) existingLabChart.destroy();
 
-        // Reverse the array so the oldest experiments are on the left, newest on the right
         const sortedLogs = [...state.lab_logs].reverse();
-
         const labels = sortedLogs.map(l => l.experiment_name || 'Run');
         const data = sortedLogs.map(l => l.yield_percent || 0);
 
@@ -1220,8 +1213,6 @@
       if (ovEl) ovEl.textContent = state.overview;
 
       let tA = 0, tE = 0, tD = state.tasks.filter(t => t.status === 'done').length;
-
-      // Filter out alumni so they don't drag down the team average
       const activeMembersList = state.members.filter(m => m.role !== 'alumni');
       activeMembersList.forEach(m => { tA += getAttRate(m.id); tE += getEngagement(m.id); });
 
@@ -1240,13 +1231,9 @@
           `<tr><td style="width:30px">#${i + 1}</td><td>${formatName(m)}</td><td style="text-align:right; font-weight:600">${getEngagement(m.id)}%</td></tr>`
         ).join('');
 
-        // --- DISCUSSION BOARD RENDERER ---
         const chatBox = document.getElementById('chat-box');
         if (chatBox) {
-          // SMART SCROLL: Check if the user is currently scrolled to the bottom BEFORE we add new text
-          // We add a 50px buffer to make it feel natural
           const isNearBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
-
           let cH = '';
           if (state.discussions.length === 0) {
             cH = '<div class="text-muted text-center" style="margin-top: auto; margin-bottom: auto;">No messages yet. Be the first to start the discussion!</div>';
@@ -1255,11 +1242,9 @@
               const author = state.members.find(m => m.id === msg.member_id);
               const isMe = author && author.id === currentUser.id;
               const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
               const isAlumni = author && author.role === 'alumni';
               const roleBadge = isAlumni ? '<span class="tag-badge" style="background:var(--mih-blue); color:white; border:none; margin-left:4px;">🎓 Alumni Mentor</span>' : '';
 
-              // 1. Build the Reply Quote box (if applicable)
               let replyHtml = '';
               if (msg.reply_to_id) {
                 const repMsg = state.discussions.find(d => d.id === msg.reply_to_id);
@@ -1271,11 +1256,11 @@
                 }
               }
 
-              // 2. Build the File Attachment link (if applicable)
+              /* OPTIMIZATION: Rel="noopener noreferrer" added */
               let attachmentHtml = '';
               if (msg.file_url) {
                 attachmentHtml = `<div style="margin-top: 8px;">
-            <a href="${safeUrl(msg.file_url)}" target="_blank" style="color: ${isMe ? '#000' : 'var(--mih-accent)'}; font-size: 12px; font-weight: bold; text-decoration: underline;">
+            <a href="${safeUrl(msg.file_url)}" target="_blank" rel="noopener noreferrer" style="color: ${isMe ? '#000' : 'var(--mih-accent)'}; font-size: 12px; font-weight: bold; text-decoration: underline;">
               📎 Download: ${esc(msg.file_name)}
             </a>
           </div>`;
@@ -1300,16 +1285,11 @@
             });
           }
           chatBox.innerHTML = cH;
-
-          // SMART SCROLL: Only push to the bottom if they were already near the bottom
-          if (isNearBottom) {
-            chatBox.scrollTop = chatBox.scrollHeight;
-          }
+          if (isNearBottom) chatBox.scrollTop = chatBox.scrollHeight;
         }
       }
 
       const viewableMembers = currentUser.role === 'admin' ? state.members : state.members.filter(m => m.id === currentUser.id);
-
       const actSess = state.sessions.find(s => s.active);
       const btnSignin = document.getElementById('btn-signin');
       if (btnSignin) btnSignin.style.display = (currentUser.role === 'member' && actSess) ? 'inline-block' : 'none';
@@ -1330,7 +1310,6 @@
         attTable.innerHTML = aH;
       }
 
-      // --- UPDATED TASKS RENDERER ---
       const renderT = (list, tblId) => {
         const tbl = document.getElementById(tblId);
         if (!tbl) return;
@@ -1342,7 +1321,6 @@
           const isAssigned = assignedMids.includes(currentUser.id);
           const canEdit = currentUser.role === 'admin' || (currentUser.role === 'member' && isAssigned && !ph.locked);
 
-          // Turn assignees into individual clean badges instead of a messy comma-separated string
           const mN = assignedMids.map(id => {
             const member = state.members.find(x => x.id === id);
             return member ? `<div style="display:inline-block; background:var(--bg-main); padding:4px 8px; border-radius:6px; border:1px solid var(--panel-border); font-size:11.5px; white-space:nowrap;">${formatName(member)}</div>` : '';
@@ -1350,7 +1328,8 @@
 
           const opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
 
-          const fileInfo = t.file_name ? `<div style="display:flex; align-items:center; gap:4px; margin-bottom:4px;"><a href="${safeUrl(t.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px; white-space:nowrap; font-weight:600;">📎 ${esc(t.file_name)}</a> <button class="btn btn-sm" title="Remove File" style="padding:0 4px; background:transparent; color:var(--danger); border:none; font-size:14px;" onclick="deleteFile('tasks', '${esc(t.id)}')">✕</button></div>` : '<span class="text-muted" style="font-size:11px">No file attached</span>';
+          /* OPTIMIZATION: Rel="noopener noreferrer" added */
+          const fileInfo = t.file_name ? `<div style="display:flex; align-items:center; gap:4px; margin-bottom:4px;"><a href="${safeUrl(t.file_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--mih-accent); font-size:12px; white-space:nowrap; font-weight:600;">📎 ${esc(t.file_name)}</a> <button class="btn btn-sm" title="Remove File" style="padding:0 4px; background:transparent; color:var(--danger); border:none; font-size:14px;" onclick="deleteFile('tasks', '${esc(t.id)}')">✕</button></div>` : '<span class="text-muted" style="font-size:11px">No file attached</span>';
           const uploadBtn = canEdit ? `
       <label class="btn btn-sm" style="display:inline-block; margin-top:6px; cursor:pointer; font-weight:normal; background:var(--hover-bg);">
         ${t.file_name ? '🔄 Replace File' : '📁 Upload File'}
@@ -1360,28 +1339,11 @@
 
           h += `<tr>
       <td><div style="font-weight:600; margin-bottom:4px; min-width: 180px; max-width: 250px; white-space: pre-wrap;">${esc(t.description)}</div></td>
-      
-      <td>
-        <div style="max-height: 110px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 4px; min-width: 200px; padding-right: 4px;">
-          ${mN || '<span class="text-muted" style="font-size:12px">None</span>'}
-        </div>
-      </td>
-      
+      <td><div style="max-height: 110px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 4px; min-width: 200px; padding-right: 4px;">${mN || '<span class="text-muted" style="font-size:12px">None</span>'}</div></td>
       <td><span class="badge">${esc(ph.name || '?')}</span> ${ph.locked ? '🔒' : ''}</td>
-      <td>
-        ${fileInfo}
-        ${uploadBtn}
-        <input type="text" placeholder="References..." value="${esc(t.references_text || '')}" onchange="updRecord('tasks','${esc(t.id)}','references_text',this.value)" ${!canEdit ? 'disabled' : ''} style="font-size:12px; padding:0.4rem; margin-top:6px; min-width:130px;">
-      </td>
-      
+      <td>${fileInfo}${uploadBtn}<input type="text" placeholder="References..." value="${esc(t.references_text || '')}" onchange="updRecord('tasks','${esc(t.id)}','references_text',this.value)" ${!canEdit ? 'disabled' : ''} style="font-size:12px; padding:0.4rem; margin-top:6px; min-width:130px;"></td>
       <td><select onchange="handleStatusChange('tasks','${esc(t.id)}',this.value, ${t.file_url ? 'true' : 'false'}, '${esc(t.status)}', this)" ${!canEdit ? 'disabled' : ''} style="min-width: 105px;">${opts}</select></td>
-      
-      <td class="admin-only">
-        <div class="flex-gap" style="gap:4px; flex-wrap:wrap; min-width:90px;">
-          <button class="btn btn-sm btn-primary" onclick="editTaskModal('${esc(t.id)}')">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="delRecord('tasks','${esc(t.id)}')">Del</button>
-        </div>
-      </td>
+      <td class="admin-only"><div class="flex-gap" style="gap:4px; flex-wrap:wrap; min-width:90px;"><button class="btn btn-sm btn-primary" onclick="editTaskModal('${esc(t.id)}')">Edit</button><button class="btn btn-sm btn-danger" onclick="delRecord('tasks','${esc(t.id)}')">Del</button></div></td>
     </tr>`;
         });
         tbl.innerHTML = h;
@@ -1389,16 +1351,15 @@
       renderT(state.tasks.filter(t => t.status !== 'done'), 'tasks-current');
       renderT(state.tasks.filter(t => t.status === 'done'), 'tasks-history');
 
-      // --- UPDATED REPORTS RENDERER ---
       const repTable = document.getElementById('reports-table');
       if (repTable) {
         let rH = `<tr><th>Report Type</th><th>Document Upload</th><th>Status</th><th class="admin-only">Act</th></tr>`;
         state.reports.forEach(r => {
-          // Only admins and members can edit. Alumni get read-only access.
           const canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
           const opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
 
-          const rFileInfo = r.file_name ? `<div style="display:flex; align-items:center; gap:4px; margin-bottom:4px;"><a href="${safeUrl(r.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px; white-space:nowrap; font-weight:600;">📎 ${esc(r.file_name)}</a> <button class="btn btn-sm" title="Remove File" style="padding:0 4px; background:transparent; color:var(--danger); border:none; font-size:14px;" onclick="deleteFile('reports', '${esc(r.id)}')">✕</button></div>` : '<span class="text-muted" style="font-size:11px">No file attached</span>';
+          /* OPTIMIZATION: Rel="noopener noreferrer" added */
+          const rFileInfo = r.file_name ? `<div style="display:flex; align-items:center; gap:4px; margin-bottom:4px;"><a href="${safeUrl(r.file_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--mih-accent); font-size:12px; white-space:nowrap; font-weight:600;">📎 ${esc(r.file_name)}</a> <button class="btn btn-sm" title="Remove File" style="padding:0 4px; background:transparent; color:var(--danger); border:none; font-size:14px;" onclick="deleteFile('reports', '${esc(r.id)}')">✕</button></div>` : '<span class="text-muted" style="font-size:11px">No file attached</span>';
           const uploadBtn = canEdit ? `
       <label class="btn btn-sm" style="display:inline-block; margin-top:6px; cursor:pointer; font-weight:normal; background:var(--hover-bg);">
         ${r.file_name ? '🔄 Replace File' : '📁 Upload File'}
@@ -1444,21 +1405,15 @@
 
       renderCharts();
 
-      // --- LAB BOOK RENDERER ---
       const labTable = document.getElementById('lab-table');
       const btnAddLog = document.getElementById('btn-add-log');
-
-      if (btnAddLog) {
-        // Hide button from alumni
-        btnAddLog.style.display = (currentUser.role === 'admin' || currentUser.role === 'member') ? 'inline-block' : 'none';
-      }
+      if (btnAddLog) btnAddLog.style.display = (currentUser.role === 'admin' || currentUser.role === 'member') ? 'inline-block' : 'none';
 
       if (labTable) {
         let lH = `<tr><th>Date</th><th>Researcher</th><th>Experiment</th><th>Temp (°C)</th><th>Time (m)</th><th>Glycerol (%)</th><th>pH</th><th>Yield %</th><th class="admin-only">Act</th></tr>`;
         state.lab_logs.forEach(log => {
           const author = state.members.find(m => m.id === log.member_id);
           const dateStr = new Date(log.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-
           lH += `<tr>
       <td style="font-size:12px;" class="text-muted">${dateStr}</td>
       <td>${author ? formatName(author) : 'Unknown'}</td>
@@ -1478,28 +1433,18 @@
     // ─── Database Actions ────────────────────────────────────────────────────────
     window.importCSV = function (input) {
       if (currentUser.role !== 'admin' && currentUser.role !== 'member') return;
-
       const file = input.files[0];
       if (!file) return;
-
-      // We use JavaScript's built-in file reader
       const reader = new FileReader();
 
       reader.onload = async function (e) {
         const text = e.target.result;
-
-        // Split the CSV by row
         const rows = text.split('\n').filter(r => r.trim() !== '');
         if (rows.length < 2) { alert('CSV file is empty or missing data.'); return; }
-
         let newLogs = [];
 
-        // Loop through the rows (skipping row 0, which is the header)
         for (let i = 1; i < rows.length; i++) {
-          // Split the row by commas and remove stray quotation marks
           const cols = rows[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-
-          // Only import if the row has enough columns
           if (cols.length >= 6) {
             newLogs.push({
               member_id: currentUser.id,
@@ -1513,27 +1458,13 @@
             });
           }
         }
+        if (newLogs.length === 0) { alert('Could not read data. Ensure your CSV columns are: Name, Temp, Time, Glycerol, pH, Yield.'); return; }
 
-        if (newLogs.length === 0) {
-          alert('Could not read data. Ensure your CSV columns are: Name, Temp, Time, Glycerol, pH, Yield.');
-          return;
-        }
-
-        // Send the entire batch to Supabase at once
         const { error } = await sb.from('lab_logs').insert(newLogs);
-
-        if (error) {
-          alert('Import failed: ' + error.message);
-        } else {
-          alert(`Success! Imported ${newLogs.length} experimental runs.`);
-          await fetchData(); // This refreshes the table and draws the chart!
-        }
-
-        // Clear the input so you can upload another file if needed
+        if (error) { alert('Import failed: ' + error.message); }
+        else { alert(`Success! Imported ${newLogs.length} experimental runs.`); await fetchData(); }
         input.value = '';
       };
-
-      // Tell the reader to execute
       reader.readAsText(file);
     };
 
@@ -1551,7 +1482,6 @@
     };
 
     let currentReplyId = null;
-
     window.setReply = function (id, name, snippet) {
       currentReplyId = id;
       document.getElementById('reply-banner').style.display = 'flex';
@@ -1577,24 +1507,20 @@
 
     window.sendMessage = async function () {
       if (currentUser.role === 'none') return;
-
       const inputEl = document.getElementById('chat-input');
       const fileInput = document.getElementById('chat-file');
       const text = inputEl.value.trim();
       const file = fileInput.files[0];
 
-      if (!text && !file) return; // Don't send empty messages
+      if (!text && !file) return;
 
       inputEl.value = '';
-      let fUrl = null;
-      let fName = null;
+      let fUrl = null, fName = null;
 
-      // 1. Handle file upload if attached
       if (file) {
         document.getElementById('chat-file-name').textContent = '⏳ Uploading...';
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const path = `chat/${Date.now()}_${safeName}`;
-
         const { error: uploadError } = await sb.storage.from('uploads').upload(path, file);
         if (uploadError) { alert('Upload failed: ' + uploadError.message); return; }
 
@@ -1602,30 +1528,20 @@
         fUrl = urlData.publicUrl;
         fName = file.name;
 
-        fileInput.value = ''; // clear file input
+        fileInput.value = '';
         document.getElementById('chat-file-name').style.display = 'none';
       }
 
-      // 2. Send message to database
       const { error } = await sb.from('discussions').insert({
-        member_id: currentUser.id,
-        content: text || null,
-        reply_to_id: currentReplyId,
-        file_url: fUrl,
-        file_name: fName
+        member_id: currentUser.id, content: text || null, reply_to_id: currentReplyId, file_url: fUrl, file_name: fName
       });
 
       if (error) { alert('Failed to send: ' + error.message); }
-      else {
-        cancelReply();
-        await fetchData();
-      }
+      else { cancelReply(); await fetchData(); }
     };
 
     window.openLabModal = function () {
-      // Security check: Only admins and members can add data
       if (currentUser.role !== 'admin' && currentUser.role !== 'member') return;
-
       openModal('Log Experimental Data', `
   <div class="form-group"><label>Experiment Name / ID</label><input type="text" id="lm-name" placeholder="e.g. Film Batch 1"></div>
   <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
@@ -1639,24 +1555,14 @@
 `, async () => {
         const name = document.getElementById('lm-name').value;
         if (!name) { alert('Experiment Name is required'); return false; }
-
-        // Gather all the inputs to send to Supabase
         const payload = {
-          member_id: currentUser.id,
-          experiment_name: name,
-          temp_c: document.getElementById('lm-temp').value || null,
-          time_mins: document.getElementById('lm-time').value || null,
-          glycerol_pct: document.getElementById('lm-gly').value || null,
-          ph_level: document.getElementById('lm-ph').value || null,
-          yield_percent: document.getElementById('lm-yield').value || null,
-          notes: document.getElementById('lm-notes').value
+          member_id: currentUser.id, experiment_name: name,
+          temp_c: document.getElementById('lm-temp').value || null, time_mins: document.getElementById('lm-time').value || null,
+          glycerol_pct: document.getElementById('lm-gly').value || null, ph_level: document.getElementById('lm-ph').value || null,
+          yield_percent: document.getElementById('lm-yield').value || null, notes: document.getElementById('lm-notes').value
         };
-
-        // Send to database
         const { error } = await sb.from('lab_logs').insert(payload);
         if (error) { alert('Error saving log: ' + error.message); return false; }
-
-        // Refresh the screen to show the new data
         await fetchData();
       });
     };
@@ -1670,7 +1576,6 @@
       }
     };
 
-    // --- 1. THE CUSTOM EMAIL BLASTER ---
     window.openEmailModal = function () {
       if (currentUser.role !== 'admin') return;
 
@@ -1693,55 +1598,29 @@ MIH Executive Team</textarea>
       `, () => {
         const sub = document.getElementById('email-sub').value;
         const body = document.getElementById('email-body').value;
-
-        // Gather all active members and admins (ignores alumni)
-        const emails = state.members
-          .filter(m => m.role === 'member' || m.role === 'admin')
-          .map(m => m.email)
-          .filter(Boolean)
-          .join(',');
-
-        // Trigger the default email client
+        const emails = state.members.filter(m => m.role === 'member' || m.role === 'admin').map(m => m.email).filter(Boolean).join(',');
         window.location.href = `mailto:?bcc=${emails}&subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(body)}`;
       });
     };
 
-    // --- 2. THE EXPORT GRADES FUNCTION ---
     window.exportGradesCSV = function () {
       if (currentUser.role !== 'admin') return;
 
       let csvContent = "data:text/csv;charset=utf-8,";
-      // Create the column headers
       csvContent += "Name,Role,Attendance (%),Tasks (%),Reports (%),Total Engagement (%),Status\n";
-
-      // Filter out alumni
       const activeMembersList = state.members.filter(m => m.role !== 'alumni');
 
-      // Calculate the math for each person
       activeMembersList.forEach(m => {
-        const aR = getAttRate(m.id);
-        const tR = getTaskRate(m.id);
-        const rpR = getRepRate();
-        const e = getEngagement(m.id);
+        const aR = getAttRate(m.id), tR = getTaskRate(m.id), rpR = getRepRate(), e = getEngagement(m.id);
         const eligible = (aR >= 90 && tR >= 90 && rpR >= 90) ? 'Certified' : 'Ineligible';
-
-        // Clean the names in case they have weird characters
-        const safeName = `"${m.name || 'Unknown'}"`;
-        const safeRole = `"${m.role || 'Member'}"`;
-
+        const safeName = `"${m.name || 'Unknown'}"`, safeRole = `"${m.role || 'Member'}"`;
         csvContent += `${safeName},${safeRole},${aR},${tR},${rpR},${e},${eligible}\n`;
       });
 
-      // Package it into a downloadable file
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-
-      // Name the file with today's date
-      const dateString = new Date().toISOString().split('T')[0];
-      link.setAttribute("download", `MIH_Grades_${dateString}.csv`);
-
-      // Click the invisible link to download
+      link.setAttribute("download", `MIH_Grades_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1779,56 +1658,32 @@ MIH Executive Team</textarea>
       }
     }
 
-    // --- BULLETPROOF ATTENDANCE FIX ---
-    // Uses insert with a catch for Primary Key collisions (error 23505) to completely bypass Postgres UPSERT bugs
     window.memberSignIn = async function () {
       const act = state.sessions.find(s => s.active);
       if (!act) { alert("There is no active session right now."); return; }
-
       const payload = { session_id: act.id, member_id: currentUser.id, status: 'present' };
 
-      // Step 1: Attempt to create a fresh record
       let { error } = await sb.from('attendance_records').insert(payload);
-
-      // Step 2: If the database says the record already exists (Code 23505), force an UPDATE instead
       if (error && error.code === '23505') {
-        const { error: updErr } = await sb.from('attendance_records')
-          .update({ status: 'present' })
-          .eq('session_id', act.id)
-          .eq('member_id', currentUser.id);
+        const { error: updErr } = await sb.from('attendance_records').update({ status: 'present' }).eq('session_id', act.id).eq('member_id', currentUser.id);
         error = updErr;
       }
-
-      if (error) {
-        alert("Error saving attendance: " + error.message);
-      } else {
-        alert('Signed in successfully!');
-        await fetchData(); // Force UI to wait for fresh database pull before redrawing percentages
-      }
+      if (error) { alert("Error saving attendance: " + error.message); }
+      else { alert('Signed in successfully!'); await fetchData(); }
     };
 
     window.togAtt = async function (mid, sid) {
       if (currentUser.role !== 'admin') return;
       const rec = state.attendance.find(a => a.member_id === mid && a.session_id === sid);
-      const curr = rec ? rec.status : 'none';
-      const nxt = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
-
+      const nxt = (!rec || rec.status === 'none') ? 'present' : rec.status === 'present' ? 'absent' : 'none';
       const payload = { session_id: sid, member_id: mid, status: nxt };
 
-      // Step 1: Attempt to create a fresh record
       let { error } = await sb.from('attendance_records').insert(payload);
-
-      // Step 2: If the database says the record already exists (Code 23505), force an UPDATE instead
       if (error && error.code === '23505') {
-        const { error: updErr } = await sb.from('attendance_records')
-          .update({ status: nxt })
-          .eq('session_id', sid)
-          .eq('member_id', mid);
+        const { error: updErr } = await sb.from('attendance_records').update({ status: nxt }).eq('session_id', sid).eq('member_id', mid);
         error = updErr;
       }
-
-      if (error) alert('Error: ' + error.message);
-      else await fetchData(); // Force UI to wait for fresh database pull before redrawing percentages
+      if (error) alert('Error: ' + error.message); else await fetchData();
     };
 
     window.openTaskModal = function () {
@@ -1859,7 +1714,6 @@ MIH Executive Team</textarea>
 
     window.editTaskModal = function (taskId) {
       if (currentUser.role !== 'admin') return;
-
       const task = state.tasks.find(t => t.id === taskId);
       if (!task) return;
       const assignedMids = state.task_assignees.filter(a => a.task_id === taskId).map(a => a.member_id);
@@ -1881,13 +1735,11 @@ MIH Executive Team</textarea>
         if (tErr) { alert('Error updating task: ' + tErr.message); return false; }
 
         await sb.from('task_assignees').delete().eq('task_id', taskId);
-
         if (mids.length > 0) {
           const assignData = mids.map(mid => ({ task_id: taskId, member_id: mid }));
           const { error: assignError } = await sb.from('task_assignees').insert(assignData);
           if (assignError) alert('Error updating members: ' + assignError.message);
         }
-
         await fetchData();
       });
     };
@@ -1903,11 +1755,8 @@ MIH Executive Team</textarea>
       if (error) alert('Error deleting record: ' + error.message); else await fetchData();
     };
 
-    // ─── Secure File Uploads ─────────────────────────────────────────────────────
     window.uploadFile = async function (table, recordId, input) {
       if (!input.files || !input.files[0]) return;
-
-      // NEW BUG FIX: Require reference before Task file upload
       if (table === 'tasks') {
         const task = state.tasks.find(x => x.id === recordId);
         if (!task || !task.references_text || task.references_text.trim() === '') {
@@ -1920,19 +1769,16 @@ MIH Executive Team</textarea>
       const file = input.files[0];
       const parentLabel = input.parentElement;
       const originalText = parentLabel.innerHTML;
-
       parentLabel.innerHTML = '⏳ Uploading...';
       parentLabel.style.pointerEvents = 'none';
 
       try {
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const path = `${table}/${Date.now()}_${safeName}`;
-
         const { error: uploadError } = await sb.storage.from('uploads').upload(path, file);
         if (uploadError) throw uploadError;
 
         const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
-
         await sb.from(table).update({ file_url: urlData.publicUrl, file_name: file.name }).eq('id', recordId);
         await fetchData();
       } catch (e) {
@@ -1951,13 +1797,12 @@ MIH Executive Team</textarea>
     window.handleStatusChange = async function (table, id, newStatus, hasFile, oldStatus, selectEl) {
       if (newStatus === 'done' && !hasFile) {
         alert('Action Denied: You must upload a file before marking this as Done.');
-        selectEl.value = oldStatus; // Revert the dropdown
+        selectEl.value = oldStatus;
         return;
       }
       await updRecord(table, id, 'status', newStatus);
     };
 
-    // ─── UI Helpers ──────────────────────────────────────────────────────────────
     function switchTab(t) {
       document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -1984,7 +1829,6 @@ MIH Executive Team</textarea>
     }
     setInterval(updateClock, 1000); updateClock();
 
-    // ─── Initialization ──────────────────────────────────────────────────────────
     async function init() {
       try {
         const savedTheme = localStorage.getItem('mih_theme');
@@ -2001,16 +1845,14 @@ MIH Executive Team</textarea>
       }
 
       sb.auth.onAuthStateChange((event, session) => {
-        console.log("Auth state change:", event);
         handleAuthSession(session);
       });
     }
 
-    // Listen for new messages in real-time
     sb.channel('public:discussions')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'discussions' }, payload => {
         if (currentUser.role !== 'none') {
-          fetchData(); // instantly downloads the new message and redraws the chat
+          fetchData();
         }
       })
       .subscribe();
