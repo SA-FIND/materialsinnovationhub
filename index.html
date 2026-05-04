@@ -588,6 +588,7 @@
       <button class="tab-btn" onclick="switchTab('certs')">Certification</button>
       <button class="tab-btn" onclick="switchTab('labbook')">🧪 Lab Book</button>
       <button class="tab-btn" onclick="switchTab('discussion')">💬 Discussion</button>
+      <button class="tab-btn" onclick="switchTab('library')">📚 Library</button>
       <button class="tab-btn admin-only" onclick="switchTab('admin')">Admin Config</button>
 
     </div>
@@ -707,16 +708,38 @@
     </div>
     <!-- LAB BOOK -->
     <div id="labbook" class="view">
+
+      <!-- New Chart Panel -->
+      <div class="glass-panel" style="border-color: var(--mih-accent); margin-bottom: 1.5rem;">
+        <div class="flex-between">
+          <div>
+            <h3 style="color: var(--mih-accent);">RSM Yield Analysis</h3>
+            <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Visualizing biopolymer yield across all
+              experimental runs.</p>
+          </div>
+        </div>
+        <div style="height: 300px; margin-top: 1rem;">
+          <canvas id="labChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Upgraded Data Table Panel -->
       <div class="glass-panel" style="border-color: var(--mih-accent);">
         <div class="flex-between">
           <div>
             <h3 style="color: var(--mih-accent);">Experimental Data Log</h3>
-            <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Record synthesis parameters for future
-              Machine Learning / RSM training.</p>
+            <p class="text-muted" style="font-size: 12px; margin-top: 4px;">CSV Format required: Name, Temp, Time,
+              Glycerol, pH, Yield.</p>
           </div>
-          <!-- Visible to Admins and Members, hidden from Alumni -->
-          <button class="btn btn-primary auth-required" id="btn-add-log" onclick="openLabModal()">+ Add
-            Experiment</button>
+          <div class="flex-gap">
+            <!-- The New CSV Import Button -->
+            <label class="btn auth-required" style="cursor: pointer; margin: 0; background: var(--hover-bg);">
+              📥 Import CSV
+              <input type="file" accept=".csv" style="display: none;" onchange="importCSV(this)">
+            </label>
+            <button class="btn btn-primary auth-required" id="btn-add-log" onclick="openLabModal()">+ Add
+              Experiment</button>
+          </div>
         </div>
         <div class="table-container">
           <table id="lab-table"></table>
@@ -767,6 +790,21 @@
 
           <div id="chat-file-name"
             style="font-size: 11px; color: var(--mih-accent); margin-top: 6px; padding-left: 1rem; display: none;">
+          </div>
+        </div>
+        <!-- LIBRARY / KNOWLEDGE BASE -->
+        <div id="library" class="view">
+          <div class="glass-panel" style="border-color: var(--mih-accent);">
+            <div class="flex-between">
+              <div>
+                <h3 style="color: var(--mih-accent);">Project Knowledge Base</h3>
+                <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Automatically compiled from all files
+                  uploaded to Tasks, Reports, and Discussions.</p>
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="library-table"></table>
+            </div>
           </div>
         </div>
         <!-- ADMIN CONFIG -->
@@ -1005,6 +1043,47 @@
             } finally {
               isFetchingData = false;
             }
+            // --- AUTOMATED LIBRARY RENDERER ---
+            const libTable = document.getElementById('library-table');
+            if (libTable) {
+              let compiledFiles = [];
+
+              // 1. Hunt for files in Tasks
+              state.tasks.forEach(t => {
+                if (t.file_url) compiledFiles.push({ name: t.file_name, url: t.file_url, source: 'Task', date: t.updated_at });
+              });
+              // 2. Hunt for files in Reports
+              state.reports.forEach(r => {
+                if (r.file_url) compiledFiles.push({ name: r.file_name, url: r.file_url, source: 'Report', date: r.updated_at });
+              });
+              // 3. Hunt for files in Discussions
+              state.discussions.forEach(d => {
+                if (d.file_url) compiledFiles.push({ name: d.file_name, url: d.file_url, source: 'Chat', date: d.created_at });
+              });
+
+              // Sort them so the newest files are always at the top
+              compiledFiles.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+              let libHtml = `<tr><th>File Name</th><th>Source Area</th><th>Upload Date</th><th>Action</th></tr>`;
+
+              if (compiledFiles.length === 0) {
+                libHtml += `<tr><td colspan="4" class="text-center text-muted" style="padding: 2rem;">No files have been uploaded to the project yet.</td></tr>`;
+              } else {
+                compiledFiles.forEach(f => {
+                  const dateStr = new Date(f.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                  // Make the source badge a different color depending on where it came from
+                  const badgeColor = f.source === 'Task' ? 'warning' : f.source === 'Report' ? 'success' : 'primary';
+
+                  libHtml += `<tr>
+               <td style="font-weight:600; font-size:13px;">${esc(f.name)}</td>
+               <td><span class="badge ${badgeColor}">${f.source}</span></td>
+               <td class="text-muted" style="font-size:12px;">${dateStr}</td>
+               <td><a href="${safeUrl(f.url)}" target="_blank" class="btn btn-sm btn-primary" style="text-decoration:none;">Download</a></td>
+             </tr>`;
+                });
+              }
+              libTable.innerHTML = libHtml;
+            }
           }
 
           // ─── KPI Helpers ─────────────────────────────────────────────────────────────
@@ -1066,6 +1145,45 @@
                   datasets: [{ label: 'Members Present', data: data, backgroundColor: '#38bdf8', borderRadius: 4 }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { ticks: { color: '#94a3b8' } } } }
+              });
+            }
+            // --- LAB BOOK CHART ---
+            const ctxLab = document.getElementById('labChart');
+            if (ctxLab && state.lab_logs && state.lab_logs.length > 0) {
+              const existingLabChart = Chart.getChart(ctxLab);
+              if (existingLabChart) existingLabChart.destroy();
+
+              // Reverse the array so the oldest experiments are on the left, newest on the right
+              const sortedLogs = [...state.lab_logs].reverse();
+
+              const labels = sortedLogs.map(l => l.experiment_name || 'Run');
+              const data = sortedLogs.map(l => l.yield_percent || 0);
+
+              new Chart(ctxLab, {
+                type: 'line',
+                data: {
+                  labels: labels,
+                  datasets: [{
+                    label: 'Yield (%)',
+                    data: data,
+                    borderColor: '#38bdf8',
+                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#010066',
+                    pointRadius: 4
+                  }]
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Yield / Tensile %', color: '#94a3b8' } },
+                    x: { ticks: { color: '#94a3b8' } }
+                  }
+                }
               });
             }
           }
@@ -1348,7 +1466,66 @@
           }
 
           // ─── Database Actions ────────────────────────────────────────────────────────
+          window.importCSV = function (input) {
+            if (currentUser.role !== 'admin' && currentUser.role !== 'member') return;
 
+            const file = input.files[0];
+            if (!file) return;
+
+            // We use JavaScript's built-in file reader
+            const reader = new FileReader();
+
+            reader.onload = async function (e) {
+              const text = e.target.result;
+
+              // Split the CSV by row
+              const rows = text.split('\n').filter(r => r.trim() !== '');
+              if (rows.length < 2) { alert('CSV file is empty or missing data.'); return; }
+
+              let newLogs = [];
+
+              // Loop through the rows (skipping row 0, which is the header)
+              for (let i = 1; i < rows.length; i++) {
+                // Split the row by commas and remove stray quotation marks
+                const cols = rows[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+
+                // Only import if the row has enough columns
+                if (cols.length >= 6) {
+                  newLogs.push({
+                    member_id: currentUser.id,
+                    experiment_name: cols[0] || `Imported Run ${i}`,
+                    temp_c: parseFloat(cols[1]) || null,
+                    time_mins: parseFloat(cols[2]) || null,
+                    glycerol_pct: parseFloat(cols[3]) || null,
+                    ph_level: parseFloat(cols[4]) || null,
+                    yield_percent: parseFloat(cols[5]) || null,
+                    notes: 'Imported from Design-Expert CSV'
+                  });
+                }
+              }
+
+              if (newLogs.length === 0) {
+                alert('Could not read data. Ensure your CSV columns are: Name, Temp, Time, Glycerol, pH, Yield.');
+                return;
+              }
+
+              // Send the entire batch to Supabase at once
+              const { error } = await sb.from('lab_logs').insert(newLogs);
+
+              if (error) {
+                alert('Import failed: ' + error.message);
+              } else {
+                alert(`Success! Imported ${newLogs.length} experimental runs.`);
+                await fetchData(); // This refreshes the table and draws the chart!
+              }
+
+              // Clear the input so you can upload another file if needed
+              input.value = '';
+            };
+
+            // Tell the reader to execute
+            reader.readAsText(file);
+          };
           window.editOverview = function () {
             if (currentUser.role !== 'admin') return;
             openModal('Edit Project Overview', `
