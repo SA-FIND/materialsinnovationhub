@@ -695,9 +695,13 @@
     <div id="certs" class="view">
       <div class="glass-panel">
         <div class="flex-between">
-          <h3>Certification Eligibility</h3>
-          <p class="text-muted" style="font-size: 12px; margin-top: 0.5rem;">Requirements: Attendance ≥ 90%, Tasks ≥
-            90%, Reports ≥ 90%</p>
+          <div>
+            <h3>Certification Eligibility</h3>
+            <p class="text-muted" style="font-size: 12px; margin-top: 0.5rem;">Requirements: Attendance ≥ 90%, Tasks ≥
+              90%, Reports ≥ 90%</p>
+          </div>
+          <!-- New Export Button -->
+          <button class="btn btn-primary admin-only auth-required" onclick="exportGradesCSV()">📊 Export Grades</button>
         </div>
         <div class="auth-required table-container">
           <table id="certs-table"></table>
@@ -823,7 +827,7 @@
               members
               regarding pending tasks and upcoming deadlines.</p>
           </div>
-          <button class="btn btn-primary" onclick="sendEmailReminder()">📩 Send Reminders</button>
+          <button class="btn btn-primary" onclick="openEmailModal()">📩 Compose Email Blast</button>
         </div>
       </div>
 
@@ -1666,30 +1670,81 @@
       }
     };
 
-    window.sendEmailReminder = function () {
+    // --- 1. THE CUSTOM EMAIL BLASTER ---
+    window.openEmailModal = function () {
       if (currentUser.role !== 'admin') return;
 
-      // Filter the members list to ONLY include active members and admins. Ignore alumni.
-      const emails = state.members
-        .filter(m => m.role === 'member' || m.role === 'admin')
-        .map(m => m.email)
-        .filter(Boolean)
-        .join(',');
+      openModal('Compose Email Blast', `
+        <div class="form-group">
+          <label>Subject</label>
+          <input type="text" id="email-sub" value="MIH Update: Weekly Tasks & Reminders">
+        </div>
+        <div class="form-group">
+          <label>Message</label>
+          <textarea id="email-body" rows="8" style="resize:vertical;">Hello Team,
 
-      const subject = encodeURIComponent("MIH Update: Pending Tasks & Project Reminders");
+Please log in to the MIH Tracker to check your tasks and updates for this week. 
 
-      const body = encodeURIComponent(
-        "Hello Team,\n\n" +
-        "This is an automated reminder to please check the MIH Tracker. Make sure to:\n" +
-        "1. Update the status of your assigned tasks.\n" +
-        "2. Upload any required documents.\n" +
-        "3. Review the upcoming project phases.\n\n" +
-        "Access the tracker here: https://sa-find.github.io/materialsinnovationhub/\n\n" +
-        "Thank you,\nMIH Admin"
-      );
+Link: https://sa-find.github.io/materialsinnovationhub/
 
-      // Opens the user's default email client with the draft pre-filled
-      window.location.href = `mailto:?bcc=${emails}&subject=${subject}&body=${body}`;
+Best,
+MIH Executive Team</textarea>
+        </div>
+      `, () => {
+        const sub = document.getElementById('email-sub').value;
+        const body = document.getElementById('email-body').value;
+
+        // Gather all active members and admins (ignores alumni)
+        const emails = state.members
+          .filter(m => m.role === 'member' || m.role === 'admin')
+          .map(m => m.email)
+          .filter(Boolean)
+          .join(',');
+
+        // Trigger the default email client
+        window.location.href = `mailto:?bcc=${emails}&subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(body)}`;
+      });
+    };
+
+    // --- 2. THE EXPORT GRADES FUNCTION ---
+    window.exportGradesCSV = function () {
+      if (currentUser.role !== 'admin') return;
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      // Create the column headers
+      csvContent += "Name,Role,Attendance (%),Tasks (%),Reports (%),Total Engagement (%),Status\n";
+
+      // Filter out alumni
+      const activeMembersList = state.members.filter(m => m.role !== 'alumni');
+
+      // Calculate the math for each person
+      activeMembersList.forEach(m => {
+        const aR = getAttRate(m.id);
+        const tR = getTaskRate(m.id);
+        const rpR = getRepRate();
+        const e = getEngagement(m.id);
+        const eligible = (aR >= 90 && tR >= 90 && rpR >= 90) ? 'Certified' : 'Ineligible';
+
+        // Clean the names in case they have weird characters
+        const safeName = `"${m.name || 'Unknown'}"`;
+        const safeRole = `"${m.role || 'Member'}"`;
+
+        csvContent += `${safeName},${safeRole},${aR},${tR},${rpR},${e},${eligible}\n`;
+      });
+
+      // Package it into a downloadable file
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+
+      // Name the file with today's date
+      const dateString = new Date().toISOString().split('T')[0];
+      link.setAttribute("download", `MIH_Grades_${dateString}.csv`);
+
+      // Click the invisible link to download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     };
 
     window.addReport = async function () {
