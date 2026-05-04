@@ -1833,7 +1833,7 @@ MIH Executive Team</textarea>
 
     window.openTaskModal = function () {
       if (currentUser.role !== 'admin') return;
-      const mO = state.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+      const mO = state.members.filter(m => m.role !== 'alumni').map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
       const pO = state.phases.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
       openModal('New Task', `
   <div class="form-group"><label for="tm-desc">Description</label><textarea id="tm-desc" rows="3" style="resize:vertical;"></textarea></div>
@@ -1864,7 +1864,7 @@ MIH Executive Team</textarea>
       if (!task) return;
       const assignedMids = state.task_assignees.filter(a => a.task_id === taskId).map(a => a.member_id);
 
-      const mO = state.members.map(m => `<option value="${esc(m.id)}" ${assignedMids.includes(m.id) ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
+      const mO = state.members.filter(m => m.role !== 'alumni').map(m => `<option value="${esc(m.id)}" ${assignedMids.includes(m.id) ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
       const pO = state.phases.map(p => `<option value="${esc(p.id)}" ${p.id === task.phase_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
 
       openModal('Edit Task', `
