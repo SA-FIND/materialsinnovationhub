@@ -1039,15 +1039,20 @@
         if (ovEl) ovEl.textContent = state.overview;
 
         let tA = 0, tE = 0, tD = state.tasks.filter(t => t.status === 'done').length;
-        state.members.forEach(m => { tA += getAttRate(m.id); tE += getEngagement(m.id); });
+
+        // Filter out alumni so they don't drag down the team average
+        const activeMembersList = state.members.filter(m => m.role !== 'alumni');
+        activeMembersList.forEach(m => { tA += getAttRate(m.id); tE += getEngagement(m.id); });
+
         const kpiAtt = document.getElementById('kpi-att');
         const kpiHealth = document.getElementById('kpi-health');
         const kpiTasks = document.getElementById('kpi-tasks');
-        if (kpiAtt) kpiAtt.textContent = state.members.length ? `${Math.round(tA / state.members.length)}%` : '0%';
-        if (kpiHealth) kpiHealth.textContent = state.members.length ? `${Math.round(tE / state.members.length)}%` : '0%';
+
+        if (kpiAtt) kpiAtt.textContent = activeMembersList.length ? `${Math.round(tA / activeMembersList.length)}%` : '0%';
+        if (kpiHealth) kpiHealth.textContent = activeMembersList.length ? `${Math.round(tE / activeMembersList.length)}%` : '0%';
         if (kpiTasks) kpiTasks.textContent = tD;
 
-        const lb = [...state.members].sort((a, b) => getEngagement(b.id) - getEngagement(a.id)).slice(0, 5);
+        const lb = [...state.members].filter(m => m.role !== 'alumni').sort((a, b) => getEngagement(b.id) - getEngagement(a.id)).slice(0, 5);
         const lbTable = document.getElementById('leaderboard-table');
         if (lbTable) {
           lbTable.innerHTML = lb.map((m, i) =>
