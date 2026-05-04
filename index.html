@@ -1064,7 +1064,7 @@
         const attTable = document.getElementById('att-table');
         if (attTable) {
           let aH = `<tr><th>Member</th>${state.sessions.map(s => `<th>${esc(s.label)}${s.active ? ' <span style="color:var(--success)">●</span>' : ''}</th>`).join('')}<th>Rate</th></tr>`;
-          viewableMembers.forEach(m => {
+          viewableMembers.filter(m => m.role !== 'alumni').forEach(m => {
             aH += `<tr><td>${formatName(m)}</td>`;
             state.sessions.forEach(s => {
               const rec = state.attendance.find(a => a.member_id === m.id && a.session_id === s.id);
@@ -1170,7 +1170,7 @@
         const certsTable = document.getElementById('certs-table');
         if (certsTable) {
           let cH = `<tr><th>Member</th><th>Att %</th><th>Task %</th><th>Rep %</th><th>Total Eng</th><th>Eligibility</th></tr>`;
-          viewableMembers.forEach(m => {
+          viewableMembers.filter(m => m.role !== 'alumni').forEach(m => {
             const e = getEngagement(m.id);
             const aR = getAttRate(m.id), tR = getTaskRate(m.id), rpR = getRepRate();
             const eligible = aR >= 90 && tR >= 90 && rpR >= 90;
