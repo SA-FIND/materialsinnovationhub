@@ -587,6 +587,7 @@
       <button class="tab-btn" onclick="switchTab('reports')">Project Reports</button>
       <button class="tab-btn" onclick="switchTab('certs')">Certification</button>
       <button class="tab-btn" onclick="switchTab('labbook')">🧪 Lab Book</button>
+      <button class="tab-btn" onclick="switchTab('discussion')">💬 Discussion</button>
       <button class="tab-btn admin-only" onclick="switchTab('admin')">Admin Config</button>
 
     </div>
@@ -722,7 +723,34 @@
         </div>
       </div>
     </div>
+    <!-- DISCUSSION BOARD -->
+    <div id="discussion" class="view">
+      <div class="glass-panel" style="border-color: var(--mih-accent);">
+        <div class="flex-between">
+          <div>
+            <h3 style="color: var(--mih-accent);">Project Discussion & Feedback</h3>
+            <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Alumni mentorship, feedback, and team Q&A.
+            </p>
+          </div>
+        </div>
 
+        <!-- Chat History Area -->
+        <div id="chat-box"
+          style="height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; padding: 1rem; background: var(--input-bg); border-radius: 8px; border: 1px solid var(--panel-border); margin-top: 1rem;">
+          <div class="text-muted text-center" style="margin-top: auto; margin-bottom: auto;">Loading messages...</div>
+        </div>
+
+        <!-- Message Input Area -->
+        <div class="auth-required" style="display: flex; gap: 0.5rem; margin-top: 1rem; align-items: flex-start;">
+          <textarea id="chat-input" placeholder="Type your message..."
+            style="min-height: 45px; height: 45px; resize: none; flex-grow: 1; border-radius: 20px; padding: 0.75rem 1rem;"></textarea>
+          <button class="btn btn-primary" onclick="sendMessage()"
+            style="height: 45px; border-radius: 20px; padding: 0 1.5rem;">Send</button>
+        </div>
+        <div class="auth-fallback text-muted" style="margin-top: 1rem;">Please log in to participate in the discussion.
+        </div>
+      </div>
+    </div>
     <!-- ADMIN CONFIG -->
     <div id="admin" class="view">
 
@@ -801,6 +829,7 @@
         task_assignees: [],
         reports: [],
         lab_logs: [],
+        discussions: [],
       };
 
       let currentUser = { role: 'none', id: null, name: '' };
@@ -925,7 +954,8 @@
             { data: overview }, { data: phases }, { data: members },
             { data: sessions }, { data: attendance }, { data: tasks },
             { data: assignees }, { data: reports },
-            { data: lab_logs } // <-- ADDED THIS
+            { data: lab_logs },
+            { data: discussions } // <-- ADDED THIS
           ] = await Promise.all([
             sb.from('project_overview').select('*').eq('id', 1).maybeSingle(),
             sb.from('phases').select('*').order('created_at', { ascending: true }),
@@ -935,7 +965,8 @@
             sb.from('tasks').select('*').order('updated_at', { ascending: false }),
             sb.from('task_assignees').select('*'),
             sb.from('reports').select('*').order('updated_at', { ascending: false }),
-            sb.from('lab_logs').select('*').order('created_at', { ascending: false }) // <-- ADDED THIS
+            sb.from('lab_logs').select('*').order('created_at', { ascending: false }),
+            sb.from('discussions').select('*').order('created_at', { ascending: true }) // <-- ADDED THIS
           ]);
 
           state.overview = overview ? overview.content : 'Welcome to the MIH Tracker.';
@@ -946,7 +977,8 @@
           state.tasks = tasks || [];
           state.task_assignees = assignees || [];
           state.reports = reports || [];
-          state.lab_logs = lab_logs || []; // <-- ADDED THIS
+          state.lab_logs = lab_logs || [];
+          state.discussions = discussions || []; // <-- ADDED THIS
 
           renderAll();
         } catch (error) {
@@ -1058,6 +1090,43 @@
           lbTable.innerHTML = lb.map((m, i) =>
             `<tr><td style="width:30px">#${i + 1}</td><td>${formatName(m)}</td><td style="text-align:right; font-weight:600">${getEngagement(m.id)}%</td></tr>`
           ).join('');
+          // --- DISCUSSION BOARD RENDERER ---
+          const chatBox = document.getElementById('chat-box');
+          if (chatBox) {
+            // SMART SCROLL: Check if the user is currently scrolled to the bottom BEFORE we add new text
+            // We add a 50px buffer to make it feel natural
+            const isNearBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
+
+            let cH = '';
+            if (state.discussions.length === 0) {
+              cH = '<div class="text-muted text-center" style="margin-top: auto; margin-bottom: auto;">No messages yet. Be the first to start the discussion!</div>';
+            } else {
+              state.discussions.forEach(msg => {
+                const author = state.members.find(m => m.id === msg.member_id);
+                const isMe = author && author.id === currentUser.id;
+                const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                // Give Alumni a special tag so their feedback stands out!
+                const isAlumni = author && author.role === 'alumni';
+                const roleBadge = isAlumni ? '<span class="tag-badge" style="background:var(--mih-blue); color:white; border:none; margin-left:4px;">🎓 Alumni Mentor</span>' : '';
+
+                cH += `
+              <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 0.5rem;">
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
+                  ${author ? esc(author.name) : 'Unknown'} ${roleBadge} • ${timeStr}
+                </div>
+                <div style="background: ${isMe ? 'var(--mih-accent)' : 'var(--panel-bg)'}; color: ${isMe ? '#000' : 'var(--text-main)'}; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--panel-border); max-width: 85%; white-space: pre-wrap; font-size: 13px; line-height: 1.5;">${esc(msg.content)}</div>
+              </div>
+            `;
+              });
+            }
+            chatBox.innerHTML = cH;
+
+            // SMART SCROLL: Only push to the bottom if they were already near the bottom
+            if (isNearBottom) {
+              chatBox.scrollTop = chatBox.scrollHeight;
+            }
+          }
         }
 
         const viewableMembers = currentUser.role === 'admin' ? state.members : state.members.filter(m => m.id === currentUser.id);
@@ -1243,6 +1312,28 @@
           if (error) { alert(error.message); return false; }
           await fetchData();
         });
+      };
+      window.sendMessage = async function () {
+        if (currentUser.role === 'none') return;
+
+        const inputEl = document.getElementById('chat-input');
+        const text = inputEl.value.trim();
+        if (!text) return;
+
+        // Clear the input box instantly so it feels fast
+        inputEl.value = '';
+
+        // Send to Supabase
+        const { error } = await sb.from('discussions').insert({
+          member_id: currentUser.id,
+          content: text
+        });
+
+        if (error) {
+          alert('Failed to send message: ' + error.message);
+        } else {
+          await fetchData(); // Refresh to show the new message
+        }
       };
 
       window.openLabModal = function () {
