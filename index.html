@@ -741,445 +741,493 @@
         </div>
 
         <!-- Message Input Area -->
-        <div class="auth-required" style="display: flex; gap: 0.5rem; margin-top: 1rem; align-items: flex-start;">
-          <textarea id="chat-input" placeholder="Type your message..."
-            style="min-height: 45px; height: 45px; resize: none; flex-grow: 1; border-radius: 20px; padding: 0.75rem 1rem;"></textarea>
-          <button class="btn btn-primary" onclick="sendMessage()"
-            style="height: 45px; border-radius: 20px; padding: 0 1.5rem;">Send</button>
-        </div>
-        <div class="auth-fallback text-muted" style="margin-top: 1rem;">Please log in to participate in the discussion.
-        </div>
-      </div>
-    </div>
-    <!-- ADMIN CONFIG -->
-    <div id="admin" class="view">
+        <div class="auth-required" style="display: flex; flex-direction: column; margin-top: 1rem;">
 
-      <!-- Restored Email Reminder Panel -->
-      <div class="glass-panel" style="border-color: var(--mih-accent);">
-        <div class="flex-between" style="margin-bottom: 0;">
-          <div>
-            <h3 style="color: var(--mih-accent);">Team Notifications</h3>
-            <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Send automated email reminders to members
-              regarding pending tasks and upcoming deadlines.</p>
+          <!-- Hidden Reply Banner -->
+          <div id="reply-banner"
+            style="display: none; background: var(--hover-bg); padding: 0.5rem 1rem; border-radius: 8px 8px 0 0; font-size: 11px; color: var(--mih-accent); align-items: center; justify-content: space-between; border: 1px solid var(--panel-border); border-bottom: none;">
+            <span id="reply-text">Replying to...</span>
+            <button class="btn btn-sm" onclick="cancelReply()"
+              style="padding: 0 4px; background: transparent; color: var(--text-muted); border: none;">✕</button>
           </div>
-          <button class="btn btn-primary" onclick="sendEmailReminder()">📩 Send Reminders</button>
+
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <!-- Paperclip Upload Button -->
+            <label class="btn"
+              style="height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 20px; padding: 0 1rem; cursor: pointer; margin: 0; font-size: 16px;">
+              📎
+              <input type="file" id="chat-file" style="display: none;" onchange="updateFileLabel()">
+            </label>
+
+            <textarea id="chat-input" placeholder="Type a message..."
+              style="min-height: 45px; height: 45px; resize: none; flex-grow: 1; border-radius: 20px; padding: 0.75rem 1rem;"></textarea>
+            <button class="btn btn-primary" onclick="sendMessage()"
+              style="height: 45px; border-radius: 20px; padding: 0 1.5rem;">Send</button>
+          </div>
+
+          <div id="chat-file-name"
+            style="font-size: 11px; color: var(--mih-accent); margin-top: 6px; padding-left: 1rem; display: none;">
+          </div>
         </div>
-      </div>
+        <!-- ADMIN CONFIG -->
+        <div id="admin" class="view">
 
-      <!-- Manage Phases Panel -->
-      <div class="glass-panel">
-        <div class="flex-between">
-          <h3>Manage Project Phases</h3>
-          <button class="btn btn-primary" onclick="addPhase()">+ Add Phase</button>
+          <!-- Restored Email Reminder Panel -->
+          <div class="glass-panel" style="border-color: var(--mih-accent);">
+            <div class="flex-between" style="margin-bottom: 0;">
+              <div>
+                <h3 style="color: var(--mih-accent);">Team Notifications</h3>
+                <p class="text-muted" style="font-size: 12px; margin-top: 4px;">Send automated email reminders to
+                  members
+                  regarding pending tasks and upcoming deadlines.</p>
+              </div>
+              <button class="btn btn-primary" onclick="sendEmailReminder()">📩 Send Reminders</button>
+            </div>
+          </div>
+
+          <!-- Manage Phases Panel -->
+          <div class="glass-panel">
+            <div class="flex-between">
+              <h3>Manage Project Phases</h3>
+              <button class="btn btn-primary" onclick="addPhase()">+ Add Phase</button>
+            </div>
+            <div class="table-container">
+              <table id="phases-table"></table>
+            </div>
+          </div>
         </div>
-        <div class="table-container">
-          <table id="phases-table"></table>
+
+        <!-- Modal -->
+        <div class="modal-overlay" id="modal">
+          <div class="modal">
+            <h3 id="m-title">Title</h3>
+            <div id="m-body" style="margin-top: 1rem;"></div>
+            <div class="flex-gap" style="justify-content: flex-end; margin-top: 1.5rem;">
+              <button class="btn" onclick="closeModal()">Cancel</button>
+              <button class="btn btn-primary" id="m-save">Save</button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Modal -->
-    <div class="modal-overlay" id="modal">
-      <div class="modal">
-        <h3 id="m-title">Title</h3>
-        <div id="m-body" style="margin-top: 1rem;"></div>
-        <div class="flex-gap" style="justify-content: flex-end; margin-top: 1.5rem;">
-          <button class="btn" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-primary" id="m-save">Save</button>
-        </div>
-      </div>
-    </div>
+        <script>
+          // ─── ABSOLUTE FAILSAFE ───────────────────────────────────────────────────────
+          // Placed before ANY Supabase code so it cannot be blocked by deadlocks
+          window.addEventListener('load', () => {
+            setTimeout(() => {
+              const loader = document.getElementById('app-loading');
+              if (loader && loader.style.display !== 'none') {
+                loader.style.display = 'none';
+                document.body.setAttribute('data-role', 'none');
+                console.warn("Absolute Failsafe triggered: Bypassed script deadlock.");
+              }
+            }, 4000);
+          });
 
-    <script>
-      // ─── ABSOLUTE FAILSAFE ───────────────────────────────────────────────────────
-      // Placed before ANY Supabase code so it cannot be blocked by deadlocks
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          const loader = document.getElementById('app-loading');
-          if (loader && loader.style.display !== 'none') {
-            loader.style.display = 'none';
-            document.body.setAttribute('data-role', 'none');
-            console.warn("Absolute Failsafe triggered: Bypassed script deadlock.");
-          }
-        }, 4000);
-      });
+          // ─── Supabase Configuration ──────────────────────────────────────────────────
+          const SUPABASE_URL = 'https://grvbyxkilrobyrbsqqqr.supabase.co';
+          const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydmJ5eGtpbHJvYnlyYnNxcXFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODYzNzIsImV4cCI6MjA5MzA2MjM3Mn0.LT_bydOKCEAgyfUnFq0Wz1lSzEIxNhHaI-JHkkGH4WA';
 
-      // ─── Supabase Configuration ──────────────────────────────────────────────────
-      const SUPABASE_URL = 'https://grvbyxkilrobyrbsqqqr.supabase.co';
-      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydmJ5eGtpbHJvYnlyYnNxcXFyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODYzNzIsImV4cCI6MjA5MzA2MjM3Mn0.LT_bydOKCEAgyfUnFq0Wz1lSzEIxNhHaI-JHkkGH4WA';
-
-      // FIX FOR ISSUE #22508: Use a custom storageKey to abandon the deadlocked auth file
-      const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-        auth: {
-          storageKey: 'mih_tracker_auth_v2',
-          persistSession: true,
-          autoRefreshToken: true
-        }
-      });
-
-      // ─── Local State Cache ───────────────────────────────────────────────────────
-      let state = {
-        theme: 'dark',
-        overview: '',
-        phases: [],
-        members: [],
-        sessions: [],
-        attendance: [],
-        tasks: [],
-        task_assignees: [],
-        reports: [],
-        lab_logs: [],
-        discussions: [],
-      };
-
-      let currentUser = { role: 'none', id: null, name: '' };
-
-      // ─── Auth Session Handler ────────────────────────────────────────────────────
-      async function handleAuthSession(session) {
-        try {
-          if (session && session.user) {
-            const { data: memberData, error } = await sb.from('members')
-              .select('*')
-              .eq('id', session.user.id)
-              .maybeSingle();
-
-            if (memberData) {
-              currentUser = { role: memberData.role, id: memberData.id, name: memberData.name };
-            } else {
-              currentUser = { role: 'member', id: session.user.id, name: 'Restored User' };
+          // FIX FOR ISSUE #22508: Use a custom storageKey to abandon the deadlocked auth file
+          const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: {
+              storageKey: 'mih_tracker_auth_v2',
+              persistSession: true,
+              autoRefreshToken: true
             }
-          } else {
-            currentUser = { role: 'none', id: null, name: '' };
+          });
+
+          // ─── Local State Cache ───────────────────────────────────────────────────────
+          let state = {
+            theme: 'dark',
+            overview: '',
+            phases: [],
+            members: [],
+            sessions: [],
+            attendance: [],
+            tasks: [],
+            task_assignees: [],
+            reports: [],
+            lab_logs: [],
+            discussions: [],
+          };
+
+          let currentUser = { role: 'none', id: null, name: '' };
+
+          // ─── Auth Session Handler ────────────────────────────────────────────────────
+          async function handleAuthSession(session) {
+            try {
+              if (session && session.user) {
+                const { data: memberData, error } = await sb.from('members')
+                  .select('*')
+                  .eq('id', session.user.id)
+                  .maybeSingle();
+
+                if (memberData) {
+                  currentUser = { role: memberData.role, id: memberData.id, name: memberData.name };
+                } else {
+                  currentUser = { role: 'member', id: session.user.id, name: 'Restored User' };
+                }
+              } else {
+                currentUser = { role: 'none', id: null, name: '' };
+              }
+            } catch (err) {
+              console.error("Auth session handler error:", err);
+              currentUser = { role: 'none', id: null, name: '' };
+            } finally {
+              applyRole();
+              try {
+                await fetchData();
+              } catch (fetchErr) {
+                console.error("fetchData error:", fetchErr);
+              }
+              const loader = document.getElementById('app-loading');
+              if (loader) loader.style.display = 'none';
+            }
           }
-        } catch (err) {
-          console.error("Auth session handler error:", err);
-          currentUser = { role: 'none', id: null, name: '' };
-        } finally {
-          applyRole();
-          try {
-            await fetchData();
-          } catch (fetchErr) {
-            console.error("fetchData error:", fetchErr);
+
+          function toggleTheme() {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', state.theme);
+            try { localStorage.setItem('mih_theme', state.theme); } catch (e) { }
           }
-          const loader = document.getElementById('app-loading');
-          if (loader) loader.style.display = 'none';
-        }
-      }
 
-      function toggleTheme() {
-        state.theme = state.theme === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', state.theme);
-        try { localStorage.setItem('mih_theme', state.theme); } catch (e) { }
-      }
+          function applyRole() {
+            // 1. Set the role attribute for CSS hiding/showing
+            document.body.setAttribute('data-role', currentUser.role);
 
-      function applyRole() {
-        // 1. Set the role attribute for CSS hiding/showing
-        document.body.setAttribute('data-role', currentUser.role);
+            let s = 'View Only';
+            if (currentUser.role === 'admin') s = '👑 Admin';
+            else if (currentUser.role === 'member') s = `👤 ${currentUser.name}`;
+            // 2. Add the Alumni status label
+            else if (currentUser.role === 'alumni') s = `🎓 Alumni: ${currentUser.name}`;
 
-        let s = 'View Only';
-        if (currentUser.role === 'admin') s = '👑 Admin';
-        else if (currentUser.role === 'member') s = `👤 ${currentUser.name}`;
-        // 2. Add the Alumni status label
-        else if (currentUser.role === 'alumni') s = `🎓 Alumni: ${currentUser.name}`;
+            const userStatus = document.getElementById('user-status');
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const changePwdBtn = document.getElementById('change-pwd-btn');
 
-        const userStatus = document.getElementById('user-status');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const changePwdBtn = document.getElementById('change-pwd-btn');
+            if (userStatus) userStatus.textContent = s;
+            if (loginBtn) loginBtn.style.display = currentUser.role === 'none' ? 'inline-block' : 'none';
+            if (logoutBtn) logoutBtn.style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
+            if (changePwdBtn) changePwdBtn.style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
 
-        if (userStatus) userStatus.textContent = s;
-        if (loginBtn) loginBtn.style.display = currentUser.role === 'none' ? 'inline-block' : 'none';
-        if (logoutBtn) logoutBtn.style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
-        if (changePwdBtn) changePwdBtn.style.display = currentUser.role !== 'none' ? 'inline-block' : 'none';
+            if (currentUser.role === 'none') switchTab('dashboard');
+          }
 
-        if (currentUser.role === 'none') switchTab('dashboard');
-      }
-
-      // ─── Auth Functions ──────────────────────────────────────────────────────────
-      function promptSetPassword() {
-        const html = `
+          // ─── Auth Functions ──────────────────────────────────────────────────────────
+          function promptSetPassword() {
+            const html = `
         <div class="form-group"><label for="new-pwd">New Password</label><input type="password" id="new-pwd" placeholder="Enter new password (min 6 chars)"></div>
         <div id="pwd-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
       `;
-        openModal('Set Your Password', html, async () => {
-          const errDiv = document.getElementById('pwd-error');
-          errDiv.textContent = '';
-          const password = document.getElementById('new-pwd').value;
-          if (!password || password.length < 6) { errDiv.textContent = 'Password must be at least 6 characters'; return false; }
+            openModal('Set Your Password', html, async () => {
+              const errDiv = document.getElementById('pwd-error');
+              errDiv.textContent = '';
+              const password = document.getElementById('new-pwd').value;
+              if (!password || password.length < 6) { errDiv.textContent = 'Password must be at least 6 characters'; return false; }
 
-          errDiv.textContent = 'Saving...';
-          const { error } = await sb.auth.updateUser({ password: password });
-          if (error) { errDiv.textContent = 'Failed to set password: ' + error.message; return false; }
-          alert('Password successfully set!'); return true;
-        });
-      }
+              errDiv.textContent = 'Saving...';
+              const { error } = await sb.auth.updateUser({ password: password });
+              if (error) { errDiv.textContent = 'Failed to set password: ' + error.message; return false; }
+              alert('Password successfully set!'); return true;
+            });
+          }
 
-      function openLogin() {
-        const html = `
+          function openLogin() {
+            const html = `
         <div id="log-box">
           <div class="form-group"><label for="log-email">Email</label><input type="email" id="log-email" placeholder="Email address"></div>
           <div class="form-group"><label for="log-pwd">Password</label><input type="password" id="log-pwd" placeholder="Password"></div>
           <div id="login-error" style="color: var(--danger); font-size: 12px; margin-top: 8px;"></div>
         </div>`;
 
-        openModal('Login', html, async () => {
-          const errDiv = document.getElementById('login-error');
-          errDiv.textContent = '';
-          const email = document.getElementById('log-email').value.trim();
-          const password = document.getElementById('log-pwd').value;
-          if (!email || !password) { errDiv.textContent = 'Enter email and password'; return false; }
+            openModal('Login', html, async () => {
+              const errDiv = document.getElementById('login-error');
+              errDiv.textContent = '';
+              const email = document.getElementById('log-email').value.trim();
+              const password = document.getElementById('log-pwd').value;
+              if (!email || !password) { errDiv.textContent = 'Enter email and password'; return false; }
 
-          errDiv.textContent = 'Logging in...';
-          try {
-            const { error } = await sb.auth.signInWithPassword({ email, password });
-            if (error) { errDiv.textContent = 'Login failed: ' + error.message; return false; }
-            return true;
-          } catch (e) {
-            errDiv.textContent = 'System/Network Error: ' + e.message; return false;
+              errDiv.textContent = 'Logging in...';
+              try {
+                const { error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) { errDiv.textContent = 'Login failed: ' + error.message; return false; }
+                return true;
+              } catch (e) {
+                errDiv.textContent = 'System/Network Error: ' + e.message; return false;
+              }
+            });
           }
-        });
-      }
 
-      async function logout() { await sb.auth.signOut(); }
+          async function logout() { await sb.auth.signOut(); }
 
-      // ─── Data Fetching ───────────────────────────────────────────────────────────
-      let isFetchingData = false;
+          // ─── Data Fetching ───────────────────────────────────────────────────────────
+          let isFetchingData = false;
 
-      async function fetchData() {
-        if (isFetchingData) return;
-        isFetchingData = true;
+          async function fetchData() {
+            if (isFetchingData) return;
+            isFetchingData = true;
 
-        try {
-          const [
-            { data: overview }, { data: phases }, { data: members },
-            { data: sessions }, { data: attendance }, { data: tasks },
-            { data: assignees }, { data: reports },
-            { data: lab_logs },
-            { data: discussions } // <-- ADDED THIS
-          ] = await Promise.all([
-            sb.from('project_overview').select('*').eq('id', 1).maybeSingle(),
-            sb.from('phases').select('*').order('created_at', { ascending: true }),
-            sb.from('members').select('*'),
-            sb.from('sessions').select('*').order('created_at', { ascending: true }),
-            sb.from('attendance_records').select('*'),
-            sb.from('tasks').select('*').order('updated_at', { ascending: false }),
-            sb.from('task_assignees').select('*'),
-            sb.from('reports').select('*').order('updated_at', { ascending: false }),
-            sb.from('lab_logs').select('*').order('created_at', { ascending: false }),
-            sb.from('discussions').select('*').order('created_at', { ascending: true }) // <-- ADDED THIS
-          ]);
+            try {
+              const [
+                { data: overview }, { data: phases }, { data: members },
+                { data: sessions }, { data: attendance }, { data: tasks },
+                { data: assignees }, { data: reports },
+                { data: lab_logs },
+                { data: discussions } // <-- ADDED THIS
+              ] = await Promise.all([
+                sb.from('project_overview').select('*').eq('id', 1).maybeSingle(),
+                sb.from('phases').select('*').order('created_at', { ascending: true }),
+                sb.from('members').select('*'),
+                sb.from('sessions').select('*').order('created_at', { ascending: true }),
+                sb.from('attendance_records').select('*'),
+                sb.from('tasks').select('*').order('updated_at', { ascending: false }),
+                sb.from('task_assignees').select('*'),
+                sb.from('reports').select('*').order('updated_at', { ascending: false }),
+                sb.from('lab_logs').select('*').order('created_at', { ascending: false }),
+                sb.from('discussions').select('*').order('created_at', { ascending: true }) // <-- ADDED THIS
+              ]);
 
-          state.overview = overview ? overview.content : 'Welcome to the MIH Tracker.';
-          state.phases = phases || [];
-          state.members = members || [];
-          state.sessions = sessions || [];
-          state.attendance = attendance || [];
-          state.tasks = tasks || [];
-          state.task_assignees = assignees || [];
-          state.reports = reports || [];
-          state.lab_logs = lab_logs || [];
-          state.discussions = discussions || []; // <-- ADDED THIS
+              state.overview = overview ? overview.content : 'Welcome to the MIH Tracker.';
+              state.phases = phases || [];
+              state.members = members || [];
+              state.sessions = sessions || [];
+              state.attendance = attendance || [];
+              state.tasks = tasks || [];
+              state.task_assignees = assignees || [];
+              state.reports = reports || [];
+              state.lab_logs = lab_logs || [];
+              state.discussions = discussions || []; // <-- ADDED THIS
 
-          renderAll();
-        } catch (error) {
-          console.error("Error fetching data:", error);
-        } finally {
-          isFetchingData = false;
-        }
-      }
+              renderAll();
+            } catch (error) {
+              console.error("Error fetching data:", error);
+            } finally {
+              isFetchingData = false;
+            }
+          }
 
-      // ─── KPI Helpers ─────────────────────────────────────────────────────────────
-      function getAttRate(mid) {
-        if (!state.sessions.length) return 0;
-        const p = state.attendance.filter(a => a.member_id === mid && a.status === 'present').length;
-        return Math.round((p / state.sessions.length) * 100);
-      }
-      function getTaskRate(mid) {
-        const assignedTaskIds = state.task_assignees.filter(a => a.member_id === mid).map(a => a.task_id);
-        const ts = state.tasks.filter(t => assignedTaskIds.includes(t.id));
-        if (!ts.length) return 100;
-        return Math.round((ts.filter(t => t.status === 'done').length / ts.length) * 100);
-      }
-      function getRepRate() {
-        if (!state.reports.length) return 100;
-        return Math.round((state.reports.filter(r => r.status === 'done').length / state.reports.length) * 100);
-      }
-      function getEngagement(mid) { return Math.round((getAttRate(mid) * 0.4) + (getTaskRate(mid) * 0.35) + (getRepRate() * 0.25)); }
+          // ─── KPI Helpers ─────────────────────────────────────────────────────────────
+          function getAttRate(mid) {
+            if (!state.sessions.length) return 0;
+            const p = state.attendance.filter(a => a.member_id === mid && a.status === 'present').length;
+            return Math.round((p / state.sessions.length) * 100);
+          }
+          function getTaskRate(mid) {
+            const assignedTaskIds = state.task_assignees.filter(a => a.member_id === mid).map(a => a.task_id);
+            const ts = state.tasks.filter(t => assignedTaskIds.includes(t.id));
+            if (!ts.length) return 100;
+            return Math.round((ts.filter(t => t.status === 'done').length / ts.length) * 100);
+          }
+          function getRepRate() {
+            if (!state.reports.length) return 100;
+            return Math.round((state.reports.filter(r => r.status === 'done').length / state.reports.length) * 100);
+          }
+          function getEngagement(mid) { return Math.round((getAttRate(mid) * 0.4) + (getTaskRate(mid) * 0.35) + (getRepRate() * 0.25)); }
 
-      // ─── Charts Integration ──────────────────────────────────────────────────────
-      let taskChartInst = null;
-      let attChartInst = null;
+          // ─── Charts Integration ──────────────────────────────────────────────────────
+          let taskChartInst = null;
+          let attChartInst = null;
 
-      function renderCharts() {
-        if (!window.Chart) return;
+          function renderCharts() {
+            if (!window.Chart) return;
 
-        const ctxTask = document.getElementById('taskChart');
-        if (ctxTask && currentUser.role !== 'none') {
-          const existingTaskChart = Chart.getChart(ctxTask);
-          if (existingTaskChart) existingTaskChart.destroy();
+            const ctxTask = document.getElementById('taskChart');
+            if (ctxTask && currentUser.role !== 'none') {
+              const existingTaskChart = Chart.getChart(ctxTask);
+              if (existingTaskChart) existingTaskChart.destroy();
 
-          const p = state.tasks.filter(t => t.status === 'pending').length;
-          const i = state.tasks.filter(t => t.status === 'in progress').length;
-          const d = state.tasks.filter(t => t.status === 'done').length;
+              const p = state.tasks.filter(t => t.status === 'pending').length;
+              const i = state.tasks.filter(t => t.status === 'in progress').length;
+              const d = state.tasks.filter(t => t.status === 'done').length;
 
-          taskChartInst = new Chart(ctxTask, {
-            type: 'doughnut',
-            data: {
-              labels: ['Pending', 'In Progress', 'Done'],
-              datasets: [{ data: [p, i, d], backgroundColor: ['#ef4444', '#f59e0b', '#10b981'], borderWidth: 0 }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
-          });
-        }
-
-        const ctxAtt = document.getElementById('attChart');
-        if (ctxAtt && currentUser.role !== 'none') {
-          const existingAttChart = Chart.getChart(ctxAtt);
-          if (existingAttChart) existingAttChart.destroy();
-
-          const labels = state.sessions.map(s => s.label);
-          const data = state.sessions.map(s => state.attendance.filter(a => a.session_id === s.id && a.status === 'present').length);
-
-          attChartInst = new Chart(ctxAtt, {
-            type: 'bar',
-            data: {
-              labels: labels,
-              datasets: [{ label: 'Members Present', data: data, backgroundColor: '#38bdf8', borderRadius: 4 }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { ticks: { color: '#94a3b8' } } } }
-          });
-        }
-      }
-
-      // ─── Render ──────────────────────────────────────────────────────────────────
-      function esc(s) {
-        if (s == null) return '';
-        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      }
-      function safeUrl(u) {
-        if (!u) return '#';
-        if (u.startsWith('http://') || u.startsWith('https://')) return esc(u);
-        return '#';
-      }
-      function formatName(m) {
-        if (!m) return '';
-        return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
-      }
-
-      function renderAll() {
-        const ovEl = document.getElementById('overview-content');
-        if (ovEl) ovEl.textContent = state.overview;
-
-        let tA = 0, tE = 0, tD = state.tasks.filter(t => t.status === 'done').length;
-
-        // Filter out alumni so they don't drag down the team average
-        const activeMembersList = state.members.filter(m => m.role !== 'alumni');
-        activeMembersList.forEach(m => { tA += getAttRate(m.id); tE += getEngagement(m.id); });
-
-        const kpiAtt = document.getElementById('kpi-att');
-        const kpiHealth = document.getElementById('kpi-health');
-        const kpiTasks = document.getElementById('kpi-tasks');
-
-        if (kpiAtt) kpiAtt.textContent = activeMembersList.length ? `${Math.round(tA / activeMembersList.length)}%` : '0%';
-        if (kpiHealth) kpiHealth.textContent = activeMembersList.length ? `${Math.round(tE / activeMembersList.length)}%` : '0%';
-        if (kpiTasks) kpiTasks.textContent = tD;
-
-        const lb = [...state.members].filter(m => m.role !== 'alumni').sort((a, b) => getEngagement(b.id) - getEngagement(a.id)).slice(0, 5);
-        const lbTable = document.getElementById('leaderboard-table');
-        if (lbTable) {
-          lbTable.innerHTML = lb.map((m, i) =>
-            `<tr><td style="width:30px">#${i + 1}</td><td>${formatName(m)}</td><td style="text-align:right; font-weight:600">${getEngagement(m.id)}%</td></tr>`
-          ).join('');
-          // --- DISCUSSION BOARD RENDERER ---
-          const chatBox = document.getElementById('chat-box');
-          if (chatBox) {
-            // SMART SCROLL: Check if the user is currently scrolled to the bottom BEFORE we add new text
-            // We add a 50px buffer to make it feel natural
-            const isNearBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
-
-            let cH = '';
-            if (state.discussions.length === 0) {
-              cH = '<div class="text-muted text-center" style="margin-top: auto; margin-bottom: auto;">No messages yet. Be the first to start the discussion!</div>';
-            } else {
-              state.discussions.forEach(msg => {
-                const author = state.members.find(m => m.id === msg.member_id);
-                const isMe = author && author.id === currentUser.id;
-                const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                // Give Alumni a special tag so their feedback stands out!
-                const isAlumni = author && author.role === 'alumni';
-                const roleBadge = isAlumni ? '<span class="tag-badge" style="background:var(--mih-blue); color:white; border:none; margin-left:4px;">🎓 Alumni Mentor</span>' : '';
-
-                cH += `
-              <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 0.5rem;">
-                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
-                  ${author ? esc(author.name) : 'Unknown'} ${roleBadge} • ${timeStr}
-                </div>
-                <div style="background: ${isMe ? 'var(--mih-accent)' : 'var(--panel-bg)'}; color: ${isMe ? '#000' : 'var(--text-main)'}; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--panel-border); max-width: 85%; white-space: pre-wrap; font-size: 13px; line-height: 1.5;">${esc(msg.content)}</div>
-              </div>
-            `;
+              taskChartInst = new Chart(ctxTask, {
+                type: 'doughnut',
+                data: {
+                  labels: ['Pending', 'In Progress', 'Done'],
+                  datasets: [{ data: [p, i, d], backgroundColor: ['#ef4444', '#f59e0b', '#10b981'], borderWidth: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
               });
             }
-            chatBox.innerHTML = cH;
 
-            // SMART SCROLL: Only push to the bottom if they were already near the bottom
-            if (isNearBottom) {
-              chatBox.scrollTop = chatBox.scrollHeight;
+            const ctxAtt = document.getElementById('attChart');
+            if (ctxAtt && currentUser.role !== 'none') {
+              const existingAttChart = Chart.getChart(ctxAtt);
+              if (existingAttChart) existingAttChart.destroy();
+
+              const labels = state.sessions.map(s => s.label);
+              const data = state.sessions.map(s => state.attendance.filter(a => a.session_id === s.id && a.status === 'present').length);
+
+              attChartInst = new Chart(ctxAtt, {
+                type: 'bar',
+                data: {
+                  labels: labels,
+                  datasets: [{ label: 'Members Present', data: data, backgroundColor: '#38bdf8', borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1 } }, x: { ticks: { color: '#94a3b8' } } } }
+              });
             }
           }
-        }
 
-        const viewableMembers = currentUser.role === 'admin' ? state.members : state.members.filter(m => m.id === currentUser.id);
+          // ─── Render ──────────────────────────────────────────────────────────────────
+          function esc(s) {
+            if (s == null) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          }
+          function safeUrl(u) {
+            if (!u) return '#';
+            if (u.startsWith('http://') || u.startsWith('https://')) return esc(u);
+            return '#';
+          }
+          function formatName(m) {
+            if (!m) return '';
+            return m.tag ? `${esc(m.name)} <span class="tag-badge">${esc(m.tag)}</span>` : esc(m.name);
+          }
 
-        const actSess = state.sessions.find(s => s.active);
-        const btnSignin = document.getElementById('btn-signin');
-        if (btnSignin) btnSignin.style.display = (currentUser.role === 'member' && actSess) ? 'inline-block' : 'none';
+          function renderAll() {
+            const ovEl = document.getElementById('overview-content');
+            if (ovEl) ovEl.textContent = state.overview;
 
-        const attTable = document.getElementById('att-table');
-        if (attTable) {
-          let aH = `<tr><th>Member</th>${state.sessions.map(s => `<th>${esc(s.label)}${s.active ? ' <span style="color:var(--success)">●</span>' : ''}</th>`).join('')}<th>Rate</th></tr>`;
-          viewableMembers.filter(m => m.role !== 'alumni').forEach(m => {
-            aH += `<tr><td>${formatName(m)}</td>`;
-            state.sessions.forEach(s => {
-              const rec = state.attendance.find(a => a.member_id === m.id && a.session_id === s.id);
-              const st = rec ? rec.status : 'none';
-              const dis = currentUser.role === 'admin' ? '' : 'disabled';
-              aH += `<td><button class="att-btn ${esc(st)}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st === 'present' ? '✓' : st === 'absent' ? '✕' : ''}</button></td>`;
-            });
-            aH += `<td>${getAttRate(m.id)}%</td></tr>`;
-          });
-          attTable.innerHTML = aH;
-        }
+            let tA = 0, tE = 0, tD = state.tasks.filter(t => t.status === 'done').length;
 
-        // --- UPDATED TASKS RENDERER ---
-        const renderT = (list, tblId) => {
-          const tbl = document.getElementById(tblId);
-          if (!tbl) return;
-          let h = `<tr><th>Task</th><th>Assignees</th><th>Phase</th><th>Submission</th><th>Status</th><th class="admin-only">Act</th></tr>`;
+            // Filter out alumni so they don't drag down the team average
+            const activeMembersList = state.members.filter(m => m.role !== 'alumni');
+            activeMembersList.forEach(m => { tA += getAttRate(m.id); tE += getEngagement(m.id); });
 
-          list.forEach(t => {
-            const ph = state.phases.find(x => x.id === t.phase_id) || {};
-            const assignedMids = state.task_assignees.filter(a => a.task_id === t.id).map(a => a.member_id);
-            const isAssigned = assignedMids.includes(currentUser.id);
-            const canEdit = currentUser.role === 'admin' || (currentUser.role === 'member' && isAssigned && !ph.locked);
+            const kpiAtt = document.getElementById('kpi-att');
+            const kpiHealth = document.getElementById('kpi-health');
+            const kpiTasks = document.getElementById('kpi-tasks');
 
-            // FIX 1: Turn assignees into individual clean badges instead of a messy comma-separated string
-            const mN = assignedMids.map(id => {
-              const member = state.members.find(x => x.id === id);
-              return member ? `<div style="display:inline-block; background:var(--bg-main); padding:4px 8px; border-radius:6px; border:1px solid var(--panel-border); font-size:11.5px; white-space:nowrap;">${formatName(member)}</div>` : '';
-            }).filter(Boolean).join('');
+            if (kpiAtt) kpiAtt.textContent = activeMembersList.length ? `${Math.round(tA / activeMembersList.length)}%` : '0%';
+            if (kpiHealth) kpiHealth.textContent = activeMembersList.length ? `${Math.round(tE / activeMembersList.length)}%` : '0%';
+            if (kpiTasks) kpiTasks.textContent = tD;
 
-            const opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
+            const lb = [...state.members].filter(m => m.role !== 'alumni').sort((a, b) => getEngagement(b.id) - getEngagement(a.id)).slice(0, 5);
+            const lbTable = document.getElementById('leaderboard-table');
+            if (lbTable) {
+              lbTable.innerHTML = lb.map((m, i) =>
+                `<tr><td style="width:30px">#${i + 1}</td><td>${formatName(m)}</td><td style="text-align:right; font-weight:600">${getEngagement(m.id)}%</td></tr>`
+              ).join('');
+              // --- DISCUSSION BOARD RENDERER ---
+              const chatBox = document.getElementById('chat-box');
+              if (chatBox) {
+                // SMART SCROLL: Check if the user is currently scrolled to the bottom BEFORE we add new text
+                // We add a 50px buffer to make it feel natural
+                const isNearBottom = chatBox.scrollHeight - chatBox.scrollTop <= chatBox.clientHeight + 50;
 
-            const fileInfo = t.file_name ? `<a href="${safeUrl(t.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px; white-space:nowrap; font-weight:600;">📎 Download: ${esc(t.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file attached</span>';
-            const uploadBtn = canEdit ? `
+                let cH = '';
+                if (state.discussions.length === 0) {
+                  cH = '<div class="text-muted text-center" style="margin-top: auto; margin-bottom: auto;">No messages yet. Be the first to start the discussion!</div>';
+                } else {
+                  state.discussions.forEach(msg => {
+                    const author = state.members.find(m => m.id === msg.member_id);
+                    const isMe = author && author.id === currentUser.id;
+                    const timeStr = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    const isAlumni = author && author.role === 'alumni';
+                    const roleBadge = isAlumni ? '<span class="tag-badge" style="background:var(--mih-blue); color:white; border:none; margin-left:4px;">🎓 Alumni Mentor</span>' : '';
+
+                    // 1. Build the Reply Quote box (if applicable)
+                    let replyHtml = '';
+                    if (msg.reply_to_id) {
+                      const repMsg = state.discussions.find(d => d.id === msg.reply_to_id);
+                      if (repMsg) {
+                        const repAuth = state.members.find(m => m.id === repMsg.member_id);
+                        replyHtml = `<div style="background: rgba(0,0,0,0.15); border-left: 3px solid var(--mih-accent); padding: 6px 10px; font-size: 11px; margin-bottom: 8px; border-radius: 4px; opacity: 0.9;">
+                  <b>${repAuth ? esc(repAuth.name) : 'Someone'}:</b> ${esc(repMsg.content || 'Attachment').substring(0, 50)}
+                </div>`;
+                      }
+                    }
+
+                    // 2. Build the File Attachment link (if applicable)
+                    let attachmentHtml = '';
+                    if (msg.file_url) {
+                      attachmentHtml = `<div style="margin-top: 8px;">
+                  <a href="${safeUrl(msg.file_url)}" target="_blank" style="color: ${isMe ? '#000' : 'var(--mih-accent)'}; font-size: 12px; font-weight: bold; text-decoration: underline;">
+                    📎 Download: ${esc(msg.file_name)}
+                  </a>
+                </div>`;
+                    }
+
+                    const safeAuthorName = author ? esc(author.name) : 'Unknown';
+                    const safeContentForReply = esc(msg.content || 'Attachment').replace(/'/g, "\\'");
+
+                    cH += `
+              <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 0.75rem;">
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                  ${safeAuthorName} ${roleBadge} • ${timeStr}
+                  <button class="btn btn-sm" style="padding: 2px 6px; font-size: 10px; background: var(--hover-bg); border: 1px solid var(--panel-border);" onclick="setReply('${esc(msg.id)}', '${safeAuthorName}', '${safeContentForReply}')">↩ Reply</button>
+                </div>
+                <div style="background: ${isMe ? 'var(--mih-accent)' : 'var(--panel-bg)'}; color: ${isMe ? '#000' : 'var(--text-main)'}; padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--panel-border); max-width: 85%; font-size: 13px; line-height: 1.5; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                  ${replyHtml}
+                  <div style="white-space: pre-wrap;">${esc(msg.content || '')}</div>
+                  ${attachmentHtml}
+                </div>
+              </div>
+            `;
+                  });
+                }
+                chatBox.innerHTML = cH;
+
+                // SMART SCROLL: Only push to the bottom if they were already near the bottom
+                if (isNearBottom) {
+                  chatBox.scrollTop = chatBox.scrollHeight;
+                }
+              }
+            }
+
+            const viewableMembers = currentUser.role === 'admin' ? state.members : state.members.filter(m => m.id === currentUser.id);
+
+            const actSess = state.sessions.find(s => s.active);
+            const btnSignin = document.getElementById('btn-signin');
+            if (btnSignin) btnSignin.style.display = (currentUser.role === 'member' && actSess) ? 'inline-block' : 'none';
+
+            const attTable = document.getElementById('att-table');
+            if (attTable) {
+              let aH = `<tr><th>Member</th>${state.sessions.map(s => `<th>${esc(s.label)}${s.active ? ' <span style="color:var(--success)">●</span>' : ''}</th>`).join('')}<th>Rate</th></tr>`;
+              viewableMembers.filter(m => m.role !== 'alumni').forEach(m => {
+                aH += `<tr><td>${formatName(m)}</td>`;
+                state.sessions.forEach(s => {
+                  const rec = state.attendance.find(a => a.member_id === m.id && a.session_id === s.id);
+                  const st = rec ? rec.status : 'none';
+                  const dis = currentUser.role === 'admin' ? '' : 'disabled';
+                  aH += `<td><button class="att-btn ${esc(st)}" ${dis} onclick="togAtt('${esc(m.id)}','${esc(s.id)}')">${st === 'present' ? '✓' : st === 'absent' ? '✕' : ''}</button></td>`;
+                });
+                aH += `<td>${getAttRate(m.id)}%</td></tr>`;
+              });
+              attTable.innerHTML = aH;
+            }
+
+            // --- UPDATED TASKS RENDERER ---
+            const renderT = (list, tblId) => {
+              const tbl = document.getElementById(tblId);
+              if (!tbl) return;
+              let h = `<tr><th>Task</th><th>Assignees</th><th>Phase</th><th>Submission</th><th>Status</th><th class="admin-only">Act</th></tr>`;
+
+              list.forEach(t => {
+                const ph = state.phases.find(x => x.id === t.phase_id) || {};
+                const assignedMids = state.task_assignees.filter(a => a.task_id === t.id).map(a => a.member_id);
+                const isAssigned = assignedMids.includes(currentUser.id);
+                const canEdit = currentUser.role === 'admin' || (currentUser.role === 'member' && isAssigned && !ph.locked);
+
+                // FIX 1: Turn assignees into individual clean badges instead of a messy comma-separated string
+                const mN = assignedMids.map(id => {
+                  const member = state.members.find(x => x.id === id);
+                  return member ? `<div style="display:inline-block; background:var(--bg-main); padding:4px 8px; border-radius:6px; border:1px solid var(--panel-border); font-size:11.5px; white-space:nowrap;">${formatName(member)}</div>` : '';
+                }).filter(Boolean).join('');
+
+                const opts = ['pending', 'in progress', 'done'].map(o => `<option ${t.status === o ? 'selected' : ''}>${o}</option>`).join('');
+
+                const fileInfo = t.file_name ? `<a href="${safeUrl(t.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px; white-space:nowrap; font-weight:600;">📎 Download: ${esc(t.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file attached</span>';
+                const uploadBtn = canEdit ? `
             <label class="btn btn-sm" style="display:inline-block; margin-top:6px; cursor:pointer; font-weight:normal; background:var(--hover-bg);">
               ${t.file_name ? '🔄 Replace File' : '📁 Upload File'}
               <input type="file" style="display:none;" onchange="uploadFile('tasks', '${esc(t.id)}', this)">
             </label>
           ` : '';
 
-            h += `<tr>
+                h += `<tr>
             <!-- FIX 2: Give the task description a min-width so it doesn't get squeezed -->
             <td><div style="font-weight:600; margin-bottom:4px; min-width: 180px; max-width: 250px;">${esc(t.description)}</div></td>
             
@@ -1207,48 +1255,48 @@
               </div>
             </td>
           </tr>`;
-          });
-          tbl.innerHTML = h;
-        };
-        renderT(state.tasks.filter(t => t.status !== 'done'), 'tasks-current');
-        renderT(state.tasks.filter(t => t.status === 'done'), 'tasks-history');
+              });
+              tbl.innerHTML = h;
+            };
+            renderT(state.tasks.filter(t => t.status !== 'done'), 'tasks-current');
+            renderT(state.tasks.filter(t => t.status === 'done'), 'tasks-history');
 
-        // --- UPDATED REPORTS RENDERER ---
-        const repTable = document.getElementById('reports-table');
-        if (repTable) {
-          let rH = `<tr><th>Report Type</th><th>Document Upload</th><th>Status</th><th class="admin-only">Act</th></tr>`;
-          state.reports.forEach(r => {
-            // FIX: Only admins and members can edit. Alumni get read-only access.
-            const canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
-            // ... (the rest of the report rendering code stays exactly the same)
-            const opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
+            // --- UPDATED REPORTS RENDERER ---
+            const repTable = document.getElementById('reports-table');
+            if (repTable) {
+              let rH = `<tr><th>Report Type</th><th>Document Upload</th><th>Status</th><th class="admin-only">Act</th></tr>`;
+              state.reports.forEach(r => {
+                // FIX: Only admins and members can edit. Alumni get read-only access.
+                const canEdit = currentUser.role === 'admin' || currentUser.role === 'member';
+                // ... (the rest of the report rendering code stays exactly the same)
+                const opts = ['pending', 'in progress', 'done'].map(o => `<option ${r.status === o ? 'selected' : ''}>${o}</option>`).join('');
 
-            const rFileInfo = r.file_name ? `<a href="${safeUrl(r.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px; white-space:nowrap; font-weight:600;">📎 Download: ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file attached</span>';
-            const uploadBtn = canEdit ? `
+                const rFileInfo = r.file_name ? `<a href="${safeUrl(r.file_url)}" target="_blank" style="color:var(--mih-accent); font-size:12px; white-space:nowrap; font-weight:600;">📎 Download: ${esc(r.file_name)}</a>` : '<span class="text-muted" style="font-size:11px">No file attached</span>';
+                const uploadBtn = canEdit ? `
             <label class="btn btn-sm" style="display:inline-block; margin-top:6px; cursor:pointer; font-weight:normal; background:var(--hover-bg);">
               ${r.file_name ? '🔄 Replace File' : '📁 Upload File'}
               <input type="file" style="display:none;" onchange="uploadFile('reports', '${esc(r.id)}', this)">
             </label>
           ` : '';
 
-            rH += `<tr>
+                rH += `<tr>
           <td style="font-weight:600">${esc(r.report_type)}</td>
           <td>${rFileInfo}<br>${uploadBtn}</td>
           <td><select onchange="updRecord('reports','${esc(r.id)}','status',this.value)" ${!canEdit ? 'disabled' : ''}>${opts}</select></td>
           <td class="admin-only"><button class="btn btn-sm btn-danger" onclick="delRecord('reports','${esc(r.id)}')">Del</button></td>
         </tr>`;
-          });
-          repTable.innerHTML = rH;
-        }
+              });
+              repTable.innerHTML = rH;
+            }
 
-        const certsTable = document.getElementById('certs-table');
-        if (certsTable) {
-          let cH = `<tr><th>Member</th><th>Att %</th><th>Task %</th><th>Rep %</th><th>Total Eng</th><th>Eligibility</th></tr>`;
-          viewableMembers.filter(m => m.role !== 'alumni').forEach(m => {
-            const e = getEngagement(m.id);
-            const aR = getAttRate(m.id), tR = getTaskRate(m.id), rpR = getRepRate();
-            const eligible = aR >= 90 && tR >= 90 && rpR >= 90;
-            cH += `<tr>
+            const certsTable = document.getElementById('certs-table');
+            if (certsTable) {
+              let cH = `<tr><th>Member</th><th>Att %</th><th>Task %</th><th>Rep %</th><th>Total Eng</th><th>Eligibility</th></tr>`;
+              viewableMembers.filter(m => m.role !== 'alumni').forEach(m => {
+                const e = getEngagement(m.id);
+                const aR = getAttRate(m.id), tR = getTaskRate(m.id), rpR = getRepRate();
+                const eligible = aR >= 90 && tR >= 90 && rpR >= 90;
+                cH += `<tr>
           <td><b>${formatName(m)}</b></td>
           <td><span class="badge ${aR >= 90 ? 'success' : 'danger'}">${aR}%</span></td>
           <td><span class="badge ${tR >= 90 ? 'success' : 'danger'}">${tR}%</span></td>
@@ -1256,34 +1304,34 @@
           <td><span class="badge ${e >= 90 ? 'success' : 'warning'}">${e}%</span></td>
           <td>${eligible ? '<span style="color:var(--success); font-weight:600">✓ Certified</span>' : '<span class="text-muted">Ineligible</span>'}</td>
         </tr>`;
-          });
-          certsTable.innerHTML = cH;
-        }
+              });
+              certsTable.innerHTML = cH;
+            }
 
-        const phasesTable = document.getElementById('phases-table');
-        if (phasesTable) {
-          phasesTable.innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` +
-            state.phases.map(p => `<tr><td>${esc(p.name)}</td><td>${p.locked ? '🔒 Locked' : '🔓 Open'}</td>
+            const phasesTable = document.getElementById('phases-table');
+            if (phasesTable) {
+              phasesTable.innerHTML = `<tr><th>Phase</th><th>Status</th><th>Act</th></tr>` +
+                state.phases.map(p => `<tr><td>${esc(p.name)}</td><td>${p.locked ? '🔒 Locked' : '🔓 Open'}</td>
           <td><button class="btn btn-sm" onclick="updRecord('phases','${esc(p.id)}','locked',${!p.locked})">${p.locked ? 'Unlock' : 'Lock'}</button> <button class="btn btn-sm btn-danger" onclick="delRecord('phases','${esc(p.id)}')">Del</button></td></tr>`).join('');
-        }
+            }
 
-        renderCharts();
-        // --- LAB BOOK RENDERER ---
-        const labTable = document.getElementById('lab-table');
-        const btnAddLog = document.getElementById('btn-add-log');
+            renderCharts();
+            // --- LAB BOOK RENDERER ---
+            const labTable = document.getElementById('lab-table');
+            const btnAddLog = document.getElementById('btn-add-log');
 
-        if (btnAddLog) {
-          // Hide button from alumni
-          btnAddLog.style.display = (currentUser.role === 'admin' || currentUser.role === 'member') ? 'inline-block' : 'none';
-        }
+            if (btnAddLog) {
+              // Hide button from alumni
+              btnAddLog.style.display = (currentUser.role === 'admin' || currentUser.role === 'member') ? 'inline-block' : 'none';
+            }
 
-        if (labTable) {
-          let lH = `<tr><th>Date</th><th>Researcher</th><th>Experiment</th><th>Temp (°C)</th><th>Time (m)</th><th>Glycerol (%)</th><th>pH</th><th>Yield %</th><th class="admin-only">Act</th></tr>`;
-          state.lab_logs.forEach(log => {
-            const author = state.members.find(m => m.id === log.member_id);
-            const dateStr = new Date(log.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            if (labTable) {
+              let lH = `<tr><th>Date</th><th>Researcher</th><th>Experiment</th><th>Temp (°C)</th><th>Time (m)</th><th>Glycerol (%)</th><th>pH</th><th>Yield %</th><th class="admin-only">Act</th></tr>`;
+              state.lab_logs.forEach(log => {
+                const author = state.members.find(m => m.id === log.member_id);
+                const dateStr = new Date(log.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
-            lH += `<tr>
+                lH += `<tr>
             <td style="font-size:12px;" class="text-muted">${dateStr}</td>
             <td>${author ? formatName(author) : 'Unknown'}</td>
             <td style="font-weight:600;">${esc(log.experiment_name)}</td>
@@ -1294,53 +1342,102 @@
             <td><span class="badge ${log.yield_percent >= 50 ? 'success' : 'warning'}">${esc(log.yield_percent || 0)}%</span></td>
             <td class="admin-only"><button class="btn btn-sm btn-danger" onclick="delRecord('lab_logs','${esc(log.id)}')">Del</button></td>
           </tr>`;
-          });
-          labTable.innerHTML = lH;
-        }
-      }
+              });
+              labTable.innerHTML = lH;
+            }
+          }
 
-      // ─── Database Actions ────────────────────────────────────────────────────────
+          // ─── Database Actions ────────────────────────────────────────────────────────
 
-      window.editOverview = function () {
-        if (currentUser.role !== 'admin') return;
-        openModal('Edit Project Overview', `
+          window.editOverview = function () {
+            if (currentUser.role !== 'admin') return;
+            openModal('Edit Project Overview', `
         <div class="form-group"><label for="ov-text">Overview Content</label>
         <textarea id="ov-text" rows="10" style="min-height:200px">${esc(state.overview)}</textarea></div>
       `, async () => {
-          const txt = document.getElementById('ov-text').value;
-          const { error } = await sb.from('project_overview').update({ content: txt }).eq('id', 1);
-          if (error) { alert(error.message); return false; }
-          await fetchData();
-        });
-      };
-      window.sendMessage = async function () {
-        if (currentUser.role === 'none') return;
+              const txt = document.getElementById('ov-text').value;
+              const { error } = await sb.from('project_overview').update({ content: txt }).eq('id', 1);
+              if (error) { alert(error.message); return false; }
+              await fetchData();
+            });
+          };
+          let currentReplyId = null;
 
-        const inputEl = document.getElementById('chat-input');
-        const text = inputEl.value.trim();
-        if (!text) return;
+          window.setReply = function (id, name, snippet) {
+            currentReplyId = id;
+            document.getElementById('reply-banner').style.display = 'flex';
+            document.getElementById('reply-text').textContent = `Replying to ${name}: "${snippet.substring(0, 30)}..."`;
+            document.getElementById('chat-input').focus();
+          };
 
-        // Clear the input box instantly so it feels fast
-        inputEl.value = '';
+          window.cancelReply = function () {
+            currentReplyId = null;
+            document.getElementById('reply-banner').style.display = 'none';
+          };
 
-        // Send to Supabase
-        const { error } = await sb.from('discussions').insert({
-          member_id: currentUser.id,
-          content: text
-        });
+          window.updateFileLabel = function () {
+            const fileInput = document.getElementById('chat-file');
+            const label = document.getElementById('chat-file-name');
+            if (fileInput.files && fileInput.files[0]) {
+              label.textContent = '📎 Attached: ' + fileInput.files[0].name;
+              label.style.display = 'block';
+            } else {
+              label.style.display = 'none';
+            }
+          };
 
-        if (error) {
-          alert('Failed to send message: ' + error.message);
-        } else {
-          await fetchData(); // Refresh to show the new message
-        }
-      };
+          window.sendMessage = async function () {
+            if (currentUser.role === 'none') return;
 
-      window.openLabModal = function () {
-        // Security check: Only admins and members can add data
-        if (currentUser.role !== 'admin' && currentUser.role !== 'member') return;
+            const inputEl = document.getElementById('chat-input');
+            const fileInput = document.getElementById('chat-file');
+            const text = inputEl.value.trim();
+            const file = fileInput.files[0];
 
-        openModal('Log Experimental Data', `
+            if (!text && !file) return; // Don't send empty messages
+
+            inputEl.value = '';
+            let fUrl = null;
+            let fName = null;
+
+            // 1. Handle file upload if attached
+            if (file) {
+              document.getElementById('chat-file-name').textContent = '⏳ Uploading...';
+              const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const path = `chat/${Date.now()}_${safeName}`;
+
+              const { error: uploadError } = await sb.storage.from('uploads').upload(path, file);
+              if (uploadError) { alert('Upload failed: ' + uploadError.message); return; }
+
+              const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
+              fUrl = urlData.publicUrl;
+              fName = file.name;
+
+              fileInput.value = ''; // clear file input
+              document.getElementById('chat-file-name').style.display = 'none';
+            }
+
+            // 2. Send message to database
+            const { error } = await sb.from('discussions').insert({
+              member_id: currentUser.id,
+              content: text || null,
+              reply_to_id: currentReplyId,
+              file_url: fUrl,
+              file_name: fName
+            });
+
+            if (error) { alert('Failed to send: ' + error.message); }
+            else {
+              cancelReply();
+              await fetchData();
+            }
+          };
+
+          window.openLabModal = function () {
+            // Security check: Only admins and members can add data
+            if (currentUser.role !== 'admin' && currentUser.role !== 'member') return;
+
+            openModal('Log Experimental Data', `
         <div class="form-group"><label>Experiment Name / ID</label><input type="text" id="lm-name" placeholder="e.g. Film Batch 1"></div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
           <div class="form-group"><label>Temp (°C)</label><input type="number" id="lm-temp" placeholder="80"></div>
@@ -1351,297 +1448,304 @@
         </div>
         <div class="form-group"><label>Observations / Notes</label><textarea id="lm-notes" rows="3" placeholder="Color changes, flexibility, brittleness..."></textarea></div>
       `, async () => {
-          const name = document.getElementById('lm-name').value;
-          if (!name) { alert('Experiment Name is required'); return false; }
+              const name = document.getElementById('lm-name').value;
+              if (!name) { alert('Experiment Name is required'); return false; }
 
-          // Gather all the inputs to send to Supabase
-          const payload = {
-            member_id: currentUser.id,
-            experiment_name: name,
-            temp_c: document.getElementById('lm-temp').value || null,
-            time_mins: document.getElementById('lm-time').value || null,
-            glycerol_pct: document.getElementById('lm-gly').value || null,
-            ph_level: document.getElementById('lm-ph').value || null,
-            yield_percent: document.getElementById('lm-yield').value || null,
-            notes: document.getElementById('lm-notes').value
+              // Gather all the inputs to send to Supabase
+              const payload = {
+                member_id: currentUser.id,
+                experiment_name: name,
+                temp_c: document.getElementById('lm-temp').value || null,
+                time_mins: document.getElementById('lm-time').value || null,
+                glycerol_pct: document.getElementById('lm-gly').value || null,
+                ph_level: document.getElementById('lm-ph').value || null,
+                yield_percent: document.getElementById('lm-yield').value || null,
+                notes: document.getElementById('lm-notes').value
+              };
+
+              // Send to database
+              const { error } = await sb.from('lab_logs').insert(payload);
+              if (error) { alert('Error saving log: ' + error.message); return false; }
+
+              // Refresh the screen to show the new data
+              await fetchData();
+            });
+          };
+          window.addPhase = async function () {
+            if (currentUser.role !== 'admin') return;
+            const n = prompt('Phase name:');
+            if (n) {
+              const { error } = await sb.from('phases').insert({ name: n });
+              if (error) alert('Error: ' + error.message); else await fetchData();
+            }
+          };
+          window.sendEmailReminder = function () {
+            if (currentUser.role !== 'admin') return;
+
+            // FIX: Filter the members list to ONLY include active members and admins. Ignore alumni.
+            const emails = state.members
+              .filter(m => m.role === 'member' || m.role === 'admin')
+              .map(m => m.email)
+              .filter(Boolean)
+              .join(',');
+
+            const subject = encodeURIComponent("MIH Update: Pending Tasks & Project Reminders");
+            // ... (the rest of the email body stays exactly the same)
+            const body = encodeURIComponent(
+              "Hello Team,\n\n" +
+              "This is an automated reminder to please check the MIH Tracker. Make sure to:\n" +
+              "1. Update the status of your assigned tasks.\n" +
+              "2. Upload any required documents.\n" +
+              "3. Review the upcoming project phases.\n\n" +
+              "Access the tracker here: https://sa-find.github.io/materialsinnovationhub/\n\n" +
+              "Thank you,\nMIH Admin"
+            );
+
+            // Opens the user's default email client with the draft pre-filled
+            window.location.href = `mailto:?bcc=${emails}&subject=${subject}&body=${body}`;
+          };
+          window.addReport = async function () {
+            if (currentUser.role !== 'admin') return;
+            const n = prompt('Report Title (e.g. Methodology):');
+            if (n) {
+              const { error } = await sb.from('reports').insert({ report_type: n });
+              if (error) alert('Error: ' + error.message); else await fetchData();
+            }
           };
 
-          // Send to database
-          const { error } = await sb.from('lab_logs').insert(payload);
-          if (error) { alert('Error saving log: ' + error.message); return false; }
-
-          // Refresh the screen to show the new data
-          await fetchData();
-        });
-      };
-      window.addPhase = async function () {
-        if (currentUser.role !== 'admin') return;
-        const n = prompt('Phase name:');
-        if (n) {
-          const { error } = await sb.from('phases').insert({ name: n });
-          if (error) alert('Error: ' + error.message); else await fetchData();
-        }
-      };
-      window.sendEmailReminder = function () {
-        if (currentUser.role !== 'admin') return;
-
-        // FIX: Filter the members list to ONLY include active members and admins. Ignore alumni.
-        const emails = state.members
-          .filter(m => m.role === 'member' || m.role === 'admin')
-          .map(m => m.email)
-          .filter(Boolean)
-          .join(',');
-
-        const subject = encodeURIComponent("MIH Update: Pending Tasks & Project Reminders");
-        // ... (the rest of the email body stays exactly the same)
-        const body = encodeURIComponent(
-          "Hello Team,\n\n" +
-          "This is an automated reminder to please check the MIH Tracker. Make sure to:\n" +
-          "1. Update the status of your assigned tasks.\n" +
-          "2. Upload any required documents.\n" +
-          "3. Review the upcoming project phases.\n\n" +
-          "Access the tracker here: https://sa-find.github.io/materialsinnovationhub/\n\n" +
-          "Thank you,\nMIH Admin"
-        );
-
-        // Opens the user's default email client with the draft pre-filled
-        window.location.href = `mailto:?bcc=${emails}&subject=${subject}&body=${body}`;
-      };
-      window.addReport = async function () {
-        if (currentUser.role !== 'admin') return;
-        const n = prompt('Report Title (e.g. Methodology):');
-        if (n) {
-          const { error } = await sb.from('reports').insert({ report_type: n });
-          if (error) alert('Error: ' + error.message); else await fetchData();
-        }
-      };
-
-      window.manageSessions = function () {
-        if (currentUser.role !== 'admin') return;
-        const html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
+          window.manageSessions = function () {
+            if (currentUser.role !== 'admin') return;
+            const html = state.sessions.map(s => `<div class="flex-between" style="margin-bottom:0.5rem">
         <span>${esc(s.label)} ${s.active ? '<span style="color:var(--success)">● Active</span>' : ''}</span>
         <div class="flex-gap" style="width:auto; justify-content:flex-end;">
           <button class="btn btn-sm" onclick="updRecord('sessions','${esc(s.id)}','active',${!s.active}); closeModal();">Toggle Active</button>
           <button class="btn btn-sm btn-danger" onclick="delRecord('sessions','${esc(s.id)}'); closeModal();">Del</button>
         </div></div>`).join('') +
-          `<div style="margin-top:1rem;"><input type="text" id="ns-name" placeholder="New session name">
+              `<div style="margin-top:1rem;"><input type="text" id="ns-name" placeholder="New session name">
          <button class="btn btn-primary" style="margin-top:0.5rem; width:100%" onclick="addNewSession()">+ Create Session</button></div>`;
-        openModal('Manage Sessions', html, () => { });
-      };
+            openModal('Manage Sessions', html, () => { });
+          };
 
-      window.addNewSession = async function () {
-        const n = document.getElementById('ns-name').value;
-        if (n) {
-          await sb.from('sessions').update({ active: false }).neq('id', '00000000-0000-0000-0000-000000000000');
-          const { error } = await sb.from('sessions').insert({ label: n, active: true });
-          if (error) { alert('Error: ' + error.message); return; }
-          closeModal(); await fetchData(); manageSessions();
-        }
-      }
+          window.addNewSession = async function () {
+            const n = document.getElementById('ns-name').value;
+            if (n) {
+              await sb.from('sessions').update({ active: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+              const { error } = await sb.from('sessions').insert({ label: n, active: true });
+              if (error) { alert('Error: ' + error.message); return; }
+              closeModal(); await fetchData(); manageSessions();
+            }
+          }
 
-      // --- BULLETPROOF ATTENDANCE FIX ---
-      // Uses insert with a catch for Primary Key collisions (error 23505) to completely bypass Postgres UPSERT bugs
-      window.memberSignIn = async function () {
-        const act = state.sessions.find(s => s.active);
-        if (!act) { alert("There is no active session right now."); return; }
+          // --- BULLETPROOF ATTENDANCE FIX ---
+          // Uses insert with a catch for Primary Key collisions (error 23505) to completely bypass Postgres UPSERT bugs
+          window.memberSignIn = async function () {
+            const act = state.sessions.find(s => s.active);
+            if (!act) { alert("There is no active session right now."); return; }
 
-        const payload = { session_id: act.id, member_id: currentUser.id, status: 'present' };
+            const payload = { session_id: act.id, member_id: currentUser.id, status: 'present' };
 
-        // Step 1: Attempt to create a fresh record
-        let { error } = await sb.from('attendance_records').insert(payload);
+            // Step 1: Attempt to create a fresh record
+            let { error } = await sb.from('attendance_records').insert(payload);
 
-        // Step 2: If the database says the record already exists (Code 23505), force an UPDATE instead
-        if (error && error.code === '23505') {
-          const { error: updErr } = await sb.from('attendance_records')
-            .update({ status: 'present' })
-            .eq('session_id', act.id)
-            .eq('member_id', currentUser.id);
-          error = updErr;
-        }
+            // Step 2: If the database says the record already exists (Code 23505), force an UPDATE instead
+            if (error && error.code === '23505') {
+              const { error: updErr } = await sb.from('attendance_records')
+                .update({ status: 'present' })
+                .eq('session_id', act.id)
+                .eq('member_id', currentUser.id);
+              error = updErr;
+            }
 
-        if (error) {
-          alert("Error saving attendance: " + error.message);
-        } else {
-          alert('Signed in successfully!');
-          await fetchData(); // Force UI to wait for fresh database pull before redrawing percentages
-        }
-      };
+            if (error) {
+              alert("Error saving attendance: " + error.message);
+            } else {
+              alert('Signed in successfully!');
+              await fetchData(); // Force UI to wait for fresh database pull before redrawing percentages
+            }
+          };
 
-      window.togAtt = async function (mid, sid) {
-        if (currentUser.role !== 'admin') return;
-        const rec = state.attendance.find(a => a.member_id === mid && a.session_id === sid);
-        const curr = rec ? rec.status : 'none';
-        const nxt = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
+          window.togAtt = async function (mid, sid) {
+            if (currentUser.role !== 'admin') return;
+            const rec = state.attendance.find(a => a.member_id === mid && a.session_id === sid);
+            const curr = rec ? rec.status : 'none';
+            const nxt = curr === 'none' ? 'present' : curr === 'present' ? 'absent' : 'none';
 
-        const payload = { session_id: sid, member_id: mid, status: nxt };
+            const payload = { session_id: sid, member_id: mid, status: nxt };
 
-        // Step 1: Attempt to create a fresh record
-        let { error } = await sb.from('attendance_records').insert(payload);
+            // Step 1: Attempt to create a fresh record
+            let { error } = await sb.from('attendance_records').insert(payload);
 
-        // Step 2: If the database says the record already exists (Code 23505), force an UPDATE instead
-        if (error && error.code === '23505') {
-          const { error: updErr } = await sb.from('attendance_records')
-            .update({ status: nxt })
-            .eq('session_id', sid)
-            .eq('member_id', mid);
-          error = updErr;
-        }
+            // Step 2: If the database says the record already exists (Code 23505), force an UPDATE instead
+            if (error && error.code === '23505') {
+              const { error: updErr } = await sb.from('attendance_records')
+                .update({ status: nxt })
+                .eq('session_id', sid)
+                .eq('member_id', mid);
+              error = updErr;
+            }
 
-        if (error) alert('Error: ' + error.message);
-        else await fetchData(); // Force UI to wait for fresh database pull before redrawing percentages
-      };
+            if (error) alert('Error: ' + error.message);
+            else await fetchData(); // Force UI to wait for fresh database pull before redrawing percentages
+          };
 
-      window.openTaskModal = function () {
-        if (currentUser.role !== 'admin') return;
-        const mO = state.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
-        const pO = state.phases.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
-        openModal('New Task', `
+          window.openTaskModal = function () {
+            if (currentUser.role !== 'admin') return;
+            const mO = state.members.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+            const pO = state.phases.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+            openModal('New Task', `
         <div class="form-group"><label for="tm-desc">Description</label><input type="text" id="tm-desc"></div>
         <div class="form-group"><label for="tm-ph">Phase</label><select id="tm-ph">${pO}</select></div>
         <div class="form-group"><label for="tm-mids">Assignees (Ctrl/Cmd+Click for multiple)</label><select id="tm-mids" multiple size="4">${mO}</select></div>
       `, async () => {
-          const desc = document.getElementById('tm-desc').value;
-          const phaseId = document.getElementById('tm-ph').value;
-          const mids = Array.from(document.getElementById('tm-mids').selectedOptions).map(x => x.value);
-          if (!desc) { alert('Description required'); return false; }
+              const desc = document.getElementById('tm-desc').value;
+              const phaseId = document.getElementById('tm-ph').value;
+              const mids = Array.from(document.getElementById('tm-mids').selectedOptions).map(x => x.value);
+              if (!desc) { alert('Description required'); return false; }
 
-          const { data: newTask, error } = await sb.from('tasks').insert({ description: desc, phase_id: phaseId }).select().single();
-          if (error) { alert('Error inserting task: ' + error.message); return false; }
+              const { data: newTask, error } = await sb.from('tasks').insert({ description: desc, phase_id: phaseId }).select().single();
+              if (error) { alert('Error inserting task: ' + error.message); return false; }
 
-          if (mids.length > 0) {
-            const assignData = mids.map(mid => ({ task_id: newTask.id, member_id: mid }));
-            const { error: assignError } = await sb.from('task_assignees').insert(assignData);
-            if (assignError) alert('Error assigning members: ' + assignError.message);
-          }
-          await fetchData();
-        });
-      };
+              if (mids.length > 0) {
+                const assignData = mids.map(mid => ({ task_id: newTask.id, member_id: mid }));
+                const { error: assignError } = await sb.from('task_assignees').insert(assignData);
+                if (assignError) alert('Error assigning members: ' + assignError.message);
+              }
+              await fetchData();
+            });
+          };
 
-      window.editTaskModal = function (taskId) {
-        if (currentUser.role !== 'admin') return;
+          window.editTaskModal = function (taskId) {
+            if (currentUser.role !== 'admin') return;
 
-        const task = state.tasks.find(t => t.id === taskId);
-        if (!task) return;
-        const assignedMids = state.task_assignees.filter(a => a.task_id === taskId).map(a => a.member_id);
+            const task = state.tasks.find(t => t.id === taskId);
+            if (!task) return;
+            const assignedMids = state.task_assignees.filter(a => a.task_id === taskId).map(a => a.member_id);
 
-        const mO = state.members.map(m => `<option value="${esc(m.id)}" ${assignedMids.includes(m.id) ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
-        const pO = state.phases.map(p => `<option value="${esc(p.id)}" ${p.id === task.phase_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+            const mO = state.members.map(m => `<option value="${esc(m.id)}" ${assignedMids.includes(m.id) ? 'selected' : ''}>${esc(m.name)}</option>`).join('');
+            const pO = state.phases.map(p => `<option value="${esc(p.id)}" ${p.id === task.phase_id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
 
-        openModal('Edit Task', `
+            openModal('Edit Task', `
         <div class="form-group"><label for="etm-desc">Description</label><input type="text" id="etm-desc" value="${esc(task.description)}"></div>
         <div class="form-group"><label for="etm-ph">Phase</label><select id="etm-ph">${pO}</select></div>
         <div class="form-group"><label for="etm-mids">Assignees (Ctrl/Cmd+Click for multiple)</label><select id="etm-mids" multiple size="4">${mO}</select></div>
       `, async () => {
-          const desc = document.getElementById('etm-desc').value;
-          const phaseId = document.getElementById('etm-ph').value;
-          const mids = Array.from(document.getElementById('etm-mids').selectedOptions).map(x => x.value);
-          if (!desc) { alert('Description required'); return false; }
+              const desc = document.getElementById('etm-desc').value;
+              const phaseId = document.getElementById('etm-ph').value;
+              const mids = Array.from(document.getElementById('etm-mids').selectedOptions).map(x => x.value);
+              if (!desc) { alert('Description required'); return false; }
 
-          const { error: tErr } = await sb.from('tasks').update({ description: desc, phase_id: phaseId }).eq('id', taskId);
-          if (tErr) { alert('Error updating task: ' + tErr.message); return false; }
+              const { error: tErr } = await sb.from('tasks').update({ description: desc, phase_id: phaseId }).eq('id', taskId);
+              if (tErr) { alert('Error updating task: ' + tErr.message); return false; }
 
-          await sb.from('task_assignees').delete().eq('task_id', taskId);
+              await sb.from('task_assignees').delete().eq('task_id', taskId);
 
-          if (mids.length > 0) {
-            const assignData = mids.map(mid => ({ task_id: taskId, member_id: mid }));
-            const { error: assignError } = await sb.from('task_assignees').insert(assignData);
-            if (assignError) alert('Error updating members: ' + assignError.message);
+              if (mids.length > 0) {
+                const assignData = mids.map(mid => ({ task_id: taskId, member_id: mid }));
+                const { error: assignError } = await sb.from('task_assignees').insert(assignData);
+                if (assignError) alert('Error updating members: ' + assignError.message);
+              }
+
+              await fetchData();
+            });
+          };
+
+          window.updRecord = async function (table, id, field, val) {
+            const { error } = await sb.from(table).update({ [field]: val }).eq('id', id);
+            if (error) alert('Error updating record: ' + error.message); else await fetchData();
+          };
+
+          window.delRecord = async function (table, id) {
+            if (!confirm('Delete this item?')) return;
+            const { error } = await sb.from(table).delete().eq('id', id);
+            if (error) alert('Error deleting record: ' + error.message); else await fetchData();
+          };
+
+          // ─── Secure File Uploads ─────────────────────────────────────────────────────
+          window.uploadFile = async function (table, recordId, input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const parentLabel = input.parentElement;
+            const originalText = parentLabel.innerHTML;
+
+            parentLabel.innerHTML = '⏳ Uploading...';
+            parentLabel.style.pointerEvents = 'none';
+
+            try {
+              const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+              const path = `${table}/${Date.now()}_${safeName}`;
+
+              const { error: uploadError } = await sb.storage.from('uploads').upload(path, file);
+              if (uploadError) throw uploadError;
+
+              const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
+
+              await sb.from(table).update({ file_url: urlData.publicUrl, file_name: file.name }).eq('id', recordId);
+              await fetchData();
+            } catch (e) {
+              alert('Upload failed: ' + e.message);
+              parentLabel.innerHTML = originalText;
+              parentLabel.style.pointerEvents = 'auto';
+            }
+          };
+
+          // ─── UI Helpers ──────────────────────────────────────────────────────────────
+          function switchTab(t) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(t).classList.add('active');
+            const btn = document.querySelector(`.tab-btn[onclick="switchTab('${t}')"]`);
+            if (btn) btn.classList.add('active');
           }
 
-          await fetchData();
-        });
-      };
-
-      window.updRecord = async function (table, id, field, val) {
-        const { error } = await sb.from(table).update({ [field]: val }).eq('id', id);
-        if (error) alert('Error updating record: ' + error.message); else await fetchData();
-      };
-
-      window.delRecord = async function (table, id) {
-        if (!confirm('Delete this item?')) return;
-        const { error } = await sb.from(table).delete().eq('id', id);
-        if (error) alert('Error deleting record: ' + error.message); else await fetchData();
-      };
-
-      // ─── Secure File Uploads ─────────────────────────────────────────────────────
-      window.uploadFile = async function (table, recordId, input) {
-        if (!input.files || !input.files[0]) return;
-        const file = input.files[0];
-        const parentLabel = input.parentElement;
-        const originalText = parentLabel.innerHTML;
-
-        parentLabel.innerHTML = '⏳ Uploading...';
-        parentLabel.style.pointerEvents = 'none';
-
-        try {
-          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const path = `${table}/${Date.now()}_${safeName}`;
-
-          const { error: uploadError } = await sb.storage.from('uploads').upload(path, file);
-          if (uploadError) throw uploadError;
-
-          const { data: urlData } = sb.storage.from('uploads').getPublicUrl(path);
-
-          await sb.from(table).update({ file_url: urlData.publicUrl, file_name: file.name }).eq('id', recordId);
-          await fetchData();
-        } catch (e) {
-          alert('Upload failed: ' + e.message);
-          parentLabel.innerHTML = originalText;
-          parentLabel.style.pointerEvents = 'auto';
-        }
-      };
-
-      // ─── UI Helpers ──────────────────────────────────────────────────────────────
-      function switchTab(t) {
-        document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById(t).classList.add('active');
-        const btn = document.querySelector(`.tab-btn[onclick="switchTab('${t}')"]`);
-        if (btn) btn.classList.add('active');
-      }
-
-      function openModal(title, html, onSave) {
-        document.getElementById('m-title').textContent = title;
-        document.getElementById('m-body').innerHTML = html;
-        document.getElementById('modal').style.display = 'flex';
-        document.getElementById('m-save').onclick = async () => {
-          const result = await onSave();
-          if (result !== false) closeModal();
-        };
-      }
-      function closeModal() { document.getElementById('modal').style.display = 'none'; }
-
-      function updateClock() {
-        const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-        const clockEl = document.getElementById('realtime-clock');
-        if (clockEl) clockEl.textContent = new Date().toLocaleString(undefined, options);
-      }
-      setInterval(updateClock, 1000); updateClock();
-
-      // ─── Initialization ──────────────────────────────────────────────────────────
-      async function init() {
-        try {
-          const savedTheme = localStorage.getItem('mih_theme');
-          if (savedTheme) {
-            state.theme = savedTheme;
-            document.documentElement.setAttribute('data-theme', state.theme);
+          function openModal(title, html, onSave) {
+            document.getElementById('m-title').textContent = title;
+            document.getElementById('m-body').innerHTML = html;
+            document.getElementById('modal').style.display = 'flex';
+            document.getElementById('m-save').onclick = async () => {
+              const result = await onSave();
+              if (result !== false) closeModal();
+            };
           }
-        } catch (e) { console.warn("localStorage access denied", e); }
+          function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
-        const hash = window.location.hash || '';
-        const search = window.location.search || '';
-        if (hash.includes('type=invite') || hash.includes('type=recovery') || search.includes('type=invite')) {
-          setTimeout(() => promptSetPassword(), 1000);
-        }
+          function updateClock() {
+            const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const clockEl = document.getElementById('realtime-clock');
+            if (clockEl) clockEl.textContent = new Date().toLocaleString(undefined, options);
+          }
+          setInterval(updateClock, 1000); updateClock();
 
-        sb.auth.onAuthStateChange((event, session) => {
-          console.log("Auth state change:", event);
-          handleAuthSession(session);
-        });
-      }
+          // ─── Initialization ──────────────────────────────────────────────────────────
+          async function init() {
+            try {
+              const savedTheme = localStorage.getItem('mih_theme');
+              if (savedTheme) {
+                state.theme = savedTheme;
+                document.documentElement.setAttribute('data-theme', state.theme);
+              }
+            } catch (e) { console.warn("localStorage access denied", e); }
 
-      init();
-    </script>
+            const hash = window.location.hash || '';
+            const search = window.location.search || '';
+            if (hash.includes('type=invite') || hash.includes('type=recovery') || search.includes('type=invite')) {
+              setTimeout(() => promptSetPassword(), 1000);
+            }
+
+            sb.auth.onAuthStateChange((event, session) => {
+              console.log("Auth state change:", event);
+              handleAuthSession(session);
+            });
+          }
+          // Listen for new messages in real-time
+          sb.channel('public:discussions')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'discussions' }, payload => {
+              if (currentUser.role !== 'none') {
+                fetchData(); // instantly downloads the new message and redraws the chat
+              }
+            })
+            .subscribe();
+          init();
+        </script>
 </body>
 
 </html>
